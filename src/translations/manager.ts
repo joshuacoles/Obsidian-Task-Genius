@@ -57,7 +57,7 @@ const SUPPORTED_LOCALES = {
 
 export type SupportedLocale = keyof typeof SUPPORTED_LOCALES;
 
-class TranslationManager {
+export class TranslationManager {
 	private static instance: TranslationManager;
 	private currentLocale: string = "en";
 	private translations: Map<string, Translation> = new Map();
