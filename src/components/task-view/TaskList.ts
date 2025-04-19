@@ -92,7 +92,7 @@ export class TaskListRendererComponent extends Component {
 
 	private renderListView(tasks: Task[]) {
 		const fragment = document.createDocumentFragment();
-		tasks.forEach((task) => {
+		tasks.slice(0, 100).forEach((task) => {
 			const taskComponent = new TaskListItemComponent(
 				task,
 				this.context,
