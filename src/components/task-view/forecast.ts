@@ -899,15 +899,15 @@ export class ForecastComponent extends Component {
 			});
 		}
 
-		// Add overdue/past scheduled section if applicable (selected date is today or future, and past tasks exist)
-		if (selectedTimestamp >= todayTimestamp && this.pastTasks.length > 0) {
-			this.dateSections.unshift({
-				title: t("Past Due"), // Keep title
-				date: new Date(0), // Placeholder
-				tasks: this.pastTasks, // Use pastTasks
-				isExpanded: true,
-			});
-		}
+		// // Add overdue/past scheduled section if applicable (selected date is today or future, and past tasks exist)
+		// if (selectedTimestamp >= todayTimestamp && this.pastTasks.length > 0) {
+		// 	this.dateSections.unshift({
+		// 		title: t("Past Due"), // Keep title
+		// 		date: new Date(0), // Placeholder
+		// 		tasks: this.pastTasks, // Use pastTasks
+		// 		isExpanded: true,
+		// 	});
+		// }
 
 		// Add future sections relative to the selected date
 		// Filter futureTasks based on their relevantDate being after selectedDate
