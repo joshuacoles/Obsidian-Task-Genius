@@ -2,7 +2,7 @@
  * Web worker for background processing of task indexing
  */
 
-import { FileStats } from "obsidian"; // Assuming ListItemCache is not directly available/serializable to worker, rely on regex
+import { CachedMetadata, FileStats } from "obsidian"; // Assuming ListItemCache is not directly available/serializable to worker, rely on regex
 import { Task } from "../types/TaskIndex"; // Task type definition needed
 import {
 	// Assume these types are defined and exported from TaskIndexWorkerMessage.ts
@@ -10,7 +10,7 @@ import {
 	IndexerCommand,
 	TaskParseResult,
 	ErrorResult,
-	BatchIndexResult, // Keep if batch processing is still used
+	BatchIndexResult, BatchIndexCommand, // Keep if batch processing is still used
 } from "./TaskIndexWorkerMessage";
 import { parse } from "date-fns/parse";
 import { parseLocalDate } from "../dateUtil";
@@ -439,7 +439,8 @@ function extractTags(
 function parseTasksFromContent(
 	filePath: string,
 	content: string,
-	format: MetadataFormat
+	format: MetadataFormat,
+	fileCache: CachedMetadata | null,
 ): Task[] {
 	const lines = content.split(/\r?\n/);
 	const tasks: Task[] = [];
@@ -491,6 +492,7 @@ function parseTasksFromContent(
 			remainingContent = extractTags(task, remainingContent, format); // Tags last
 
 			task.content = remainingContent.replace(/\s{2,}/g, " ").trim();
+			extractAmbientProperties(task, content, fileCache);
 
 			tasks.push(task);
 		}
@@ -548,6 +550,33 @@ function extractDateFromPath(
 	return undefined;
 }
 
+function extractAmbientProperties(task: Task, content: string, fileCache: CachedMetadata | null): void {
+	// Extract just the filename from the path and check if it's a daily note
+	const basename = task.filePath.split("/").pop() || task.filePath;
+	// const dailyNoteMatch = basename.match(/(\d{4}-\d{2}-\d{2})\.md$/);
+	//
+	// if (dailyNoteMatch && !task.scheduledDate) {
+	// 	try {
+	// 		const time = new Date(dailyNoteMatch[1]).getTime();
+	// 		task.scheduledDate = time;
+	// 		task.dueDate = time;
+	// 	} catch (e) {
+	// 		console.error("Failed to parse daily note date:", dailyNoteMatch[1], e);
+	// 	}
+	// }
+
+	if (fileCache) {
+		console.log("FileCache found", task.filePath, fileCache);
+	}
+
+	if (fileCache?.tags) {
+		console.log("PAM", task.filePath, fileCache.tags);
+		if (fileCache.tags.find((x) => x.tag === "#project")) {
+			task.project = basename.replace('.md', '');
+		}
+	}
+}
+
 /**
  * Process a single file - NOW ACCEPTS METADATA FORMAT
  */
@@ -561,14 +590,16 @@ function processFile(
 		dailyNoteFormat: string;
 		useAsDateType: "due" | "start" | "scheduled";
 		dailyNotePath: string;
-	}
+	},
+	fileCache: CachedMetadata | null,
 ): TaskParseResult {
 	const startTime = performance.now();
 	try {
 		const tasks = parseTasksFromContent(
 			filePath,
 			content,
-			settings.preferMetadataFormat
+			settings.preferMetadataFormat,
+			fileCache
 		);
 		const completedTasks = tasks.filter((t) => t.completed).length;
 		try {
@@ -627,7 +658,7 @@ function processFile(
 
 // --- Batch processing function remains largely the same, but calls updated processFile ---
 function processBatch(
-	files: { path: string; content: string; stats: FileStats }[],
+	files: BatchIndexCommand['files'],
 	settings: {
 		preferMetadataFormat: MetadataFormat;
 		useDailyNotePathAsDate: boolean;
@@ -648,7 +679,8 @@ function processBatch(
 				file.path,
 				file.content,
 				file.stats,
-				settings
+				settings,
+				file.metadata || null,
 			);
 			totalTasks += parseResult.stats.totalTasks;
 			results.push({
@@ -702,7 +734,8 @@ self.onmessage = async (event) => {
 					message.filePath,
 					message.content,
 					message.stats,
-					settings
+					settings,
+					message.metadata?.fileCache || null
 				);
 				self.postMessage(result);
 			} catch (error) {
