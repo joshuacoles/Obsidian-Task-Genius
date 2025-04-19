@@ -60,6 +60,7 @@ export abstract class TwoColumnViewBase<T extends string> extends Component {
 
 	// State
 	protected allTasks: Task[] = [];
+	protected allTasksMap: Map<string, Task> = new Map();
 	protected filteredTasks: Task[] = [];
 	protected selectedItems: SelectedItems<T> = {
 		items: [],
@@ -223,6 +224,7 @@ export abstract class TwoColumnViewBase<T extends string> extends Component {
 
 	public setTasks(tasks: Task[]) {
 		this.allTasks = tasks;
+		this.allTasksMap = new Map(tasks.map((task) => [task.id, task]));
 		this.buildItemsIndex();
 		this.renderItemsList();
 
@@ -381,6 +383,7 @@ export abstract class TwoColumnViewBase<T extends string> extends Component {
 			this.taskRenderer.renderTasks(
 				this.filteredTasks,
 				this.isTreeView,
+				this.allTasksMap,
 				t("No tasks in the selected items")
 			);
 		}
