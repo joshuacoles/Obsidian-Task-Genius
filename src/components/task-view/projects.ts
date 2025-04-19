@@ -33,6 +33,7 @@ export class ProjectsComponent extends Component {
 
 	// State
 	private allTasks: Task[] = [];
+	private allTasksMap: Map<string, Task> = new Map();
 	private filteredTasks: Task[] = [];
 	private selectedProjects: SelectedProjects = {
 		projects: [],

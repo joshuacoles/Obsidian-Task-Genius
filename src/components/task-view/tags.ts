@@ -43,6 +43,7 @@ export class TagsComponent extends Component {
 
 	// State
 	private allTasks: Task[] = [];
+	private allTasksMap: Map<string, Task> = new Map();
 	private filteredTasks: Task[] = [];
 	private tagSections: TagSection[] = [];
 	private selectedTags: SelectedTags = {
