@@ -33,6 +33,7 @@ export class TaskListItemComponent extends Component {
 	}
 
 	onload() {
+		// TODO: THIS IS SLOW FOR THE FORECAST
 		this.registerDomEvent(this.element, "contextmenu", (event) => {
 			console.log("contextmenu", event, this.task);
 			if (this.onTaskContextMenu) {
@@ -83,6 +84,7 @@ export class TaskListItemComponent extends Component {
 		});
 		this.containerEl.appendChild(this.contentEl);
 
+		// TODO: Possibly because of this? (or other markdown rendering)
 		this.renderMarkdown();
 
 		this.metadataEl = this.containerEl.createDiv({
