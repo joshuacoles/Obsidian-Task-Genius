@@ -43,6 +43,7 @@ export class TagsComponent extends Component {
 
 	// State
 	private allTasks: Task[] = [];
+	private allTasksMap: Map<string, Task> = new Map();
 	private filteredTasks: Task[] = [];
 	private tagSections: TagSection[] = [];
 	private selectedTags: SelectedTags = {
@@ -207,6 +208,9 @@ export class TagsComponent extends Component {
 
 	public setTasks(tasks: Task[]) {
 		this.allTasks = tasks;
+		this.allTasksMap = new Map(
+			this.allTasks.map((task) => [task.id, task])
+		);
 		this.buildTagsIndex();
 		this.renderTagsList();
 
@@ -647,6 +651,7 @@ export class TagsComponent extends Component {
 			this.mainTaskRenderer.renderTasks(
 				this.filteredTasks,
 				this.isTreeView,
+				this.allTasksMap,
 				// Empty message handled above, so this shouldn't be shown
 				t("No tasks found.")
 			);
