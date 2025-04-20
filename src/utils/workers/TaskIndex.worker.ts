@@ -450,6 +450,16 @@ function parseTasksFromContent(
 		const taskMatch = line.match(TASK_REGEX);
 
 		if (taskMatch) {
+			// ASSUMPTION: headings are sorted by their position in the file
+			const heading: string | undefined = (fileCache?.headings?.filter(heading => {
+				return heading.position.start.line <= i;
+			}) ?? []).slice(-1)[0]?.heading;
+
+			// Filter out headings that we don't care about
+			if (["daily habits", "day planner"].includes(heading?.toLowerCase())) {
+				continue;
+			}
+
 			const [fullMatch, , , , status, contentWithMetadata] = taskMatch;
 			if (status === undefined || contentWithMetadata === undefined)
 				continue;
