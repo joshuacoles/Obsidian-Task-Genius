@@ -129,6 +129,7 @@ export class ForecastStore {
 	}
 
 	private setSelectedDate(date: Date): void {
+		this.focusFilter = null;
 		this.selectedDate = new Date(date);
 		this.selectedDate.setHours(0, 0, 0, 0);
 		this.notifyChange();
@@ -258,33 +259,25 @@ export class ForecastStore {
 			const groupedPast = this.groupTasksByDate(past);
 			const sortedDates = Array.from(groupedPast.keys()).sort();
 
-			if (sortedDates.length > 0) {
-				return sortedDates.map(dateKey => {
-					const [year, month, day] = dateKey.split("-").map(Number);
-					const date = new Date(year, month - 1, day);
-					const tasks = groupedPast.get(dateKey)!;
+			return sortedDates.map(dateKey => {
+				const [year, month, day] = dateKey.split("-").map(Number);
+				const date = new Date(year, month - 1, day);
+				const tasks = groupedPast.get(dateKey)!;
 
-					return {
-						title: this.formatSectionTitleForDate(date),
-						date: date,
-						tasks: tasks,
-						isExpanded: true
-					};
-				}).filter(section => section.tasks.length > 0);
-			} else {
-				return [];
-			}
-		} else if (this.focusFilter === "today") {
-			if (today.length > 0) {
-				return [{
-					title: this.formatSectionTitleForDate(this.currentDate),
-					date: new Date(this.currentDate),
-					tasks: today,
+				return {
+					title: this.formatSectionTitleForDate(date),
+					date: date,
+					tasks: tasks,
 					isExpanded: true
-				}];
-			} else {
-				return [];
-			}
+				};
+			});
+		} else if (this.focusFilter === "today") {
+			return [{
+				title: this.formatSectionTitleForDate(this.currentDate),
+				date: new Date(this.currentDate),
+				tasks: today,
+				isExpanded: true
+			}];
 		} else if (this.focusFilter === "future") {
 			// Group future tasks by date
 			const dateMap = this.groupTasksByDate(future);
@@ -301,21 +294,17 @@ export class ForecastStore {
 					tasks: tasks,
 					isExpanded: this.shouldExpandFutureSection(date, this.currentDate)
 				};
-			}).filter(section => section.tasks.length > 0);
+			});
 		} else {
 			// When showing tasks for selected date
 			const selectedTasks = this.getTasksForDate(this.selectedDate);
 
-			if (selectedTasks.length > 0) {
-				return [{
-					title: this.formatSectionTitleForDate(this.selectedDate),
-					date: new Date(this.selectedDate),
-					tasks: selectedTasks,
-					isExpanded: true
-				}];
-			} else {
-				return [];
-			}
+			return [{
+				title: this.formatSectionTitleForDate(this.selectedDate),
+				date: new Date(this.selectedDate),
+				tasks: selectedTasks,
+				isExpanded: true
+			}];
 		}
 	}
 
