@@ -14,8 +14,9 @@ import "../../styles/calendar.css";
 import { TaskTreeItemComponent } from "./treeItem";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
+import { ForecastStore, ForecastActionType } from "./forecastStore";
 
-interface DateSection {
+export interface DateSection {
 	title: string;
 	date: Date;
 	tasks: Task[];
@@ -43,19 +44,11 @@ export class ForecastComponent extends Component {
 	private calendarComponent: CalendarComponent;
 	private taskComponents: TaskListItemComponent[] = [];
 
-	// State
-	private allTasks: Task[] = [];
-	private pastTasks: Task[] = [];
-	private todayTasks: Task[] = [];
-	private futureTasks: Task[] = [];
-	private selectedDate: Date;
-	private currentDate: Date;
-	private dateSections: DateSection[] = [];
-	private focusFilter: string | null = null;
+	// State and rendering
+	private store: ForecastStore;
 	private windowFocusHandler: () => void;
-	private isTreeView: boolean = false;
 	private treeComponents: TaskTreeItemComponent[] = [];
-	private allTasksMap: Map<string, Task> = new Map();
+	private dateSections: DateSection[] = [];
 
 	constructor(
 		private parentEl: HTMLElement,
@@ -68,10 +61,13 @@ export class ForecastComponent extends Component {
 		} = {}
 	) {
 		super();
-		// Initialize dates
-		this.currentDate = new Date();
-		this.currentDate.setHours(0, 0, 0, 0);
-		this.selectedDate = new Date(this.currentDate);
+		// Initialize store
+		this.store = new ForecastStore();
+
+		// Subscribe to store changes
+		this.store.subscribe(() => {
+			this.updateUI();
+		});
 	}
 
 	onload() {
@@ -98,47 +94,41 @@ export class ForecastComponent extends Component {
 			newCurrentDate.setHours(0, 0, 0, 0);
 
 			// Store previous current date for comparison
-			const oldCurrentDate = new Date(this.currentDate);
+			const oldCurrentDate = this.store.getCurrentDate();
 			oldCurrentDate.setHours(0, 0, 0, 0);
 
-			// Update current date
-			this.currentDate = newCurrentDate;
+			// Only update if the date has actually changed
+			if (oldCurrentDate.getTime() !== newCurrentDate.getTime()) {
+				// Update current date in store via dispatch
+				this.store.dispatch({
+					type: ForecastActionType.UPDATE_CURRENT_DATE,
+					payload: newCurrentDate
+				});
 
-			// Update the calendar's current date
-			this.calendarComponent.setCurrentDate(this.currentDate);
+				// Update the calendar's current date
+				this.calendarComponent.setCurrentDate(newCurrentDate);
 
-			// Only update selected date if it's older than the new current date
-			// and the selected date was previously on the current date
-			const selectedDateTimestamp = new Date(this.selectedDate).setHours(
-				0,
-				0,
-				0,
-				0
-			);
-			const oldCurrentTimestamp = oldCurrentDate.getTime();
-			const newCurrentTimestamp = newCurrentDate.getTime();
+				// Only update selected date if it's older than the new current date
+				// and the selected date was previously on the current date
+				const selectedDate = this.store.getSelectedDate();
+				const selectedDateTimestamp = selectedDate.setHours(0, 0, 0, 0);
+				const oldCurrentTimestamp = oldCurrentDate.getTime();
+				const newCurrentTimestamp = newCurrentDate.getTime();
 
-			// Check if selectedDate equals oldCurrentDate (was on "today")
-			// and if the new current date is after the selected date
-			if (
-				selectedDateTimestamp === oldCurrentTimestamp &&
-				selectedDateTimestamp < newCurrentTimestamp
-			) {
-				// Update selected date to the new current date
-				this.selectedDate = new Date(newCurrentDate);
-				// Update the calendar's selected date
-				this.calendarComponent.selectDate(this.selectedDate);
+				// Check if selectedDate equals oldCurrentDate (was on "today")
+				// and if the new current date is after the selected date
+				if (selectedDateTimestamp === oldCurrentTimestamp &&
+					selectedDateTimestamp < newCurrentTimestamp) {
+					// Update selected date to the new current date
+					this.store.dispatch({
+						type: ForecastActionType.SELECT_DATE,
+						payload: newCurrentDate
+					});
+
+					// Update the calendar's selected date
+					this.calendarComponent.selectDate(newCurrentDate);
+				}
 			}
-			// If the date hasn't changed (still the same day), don't refresh
-			if (oldCurrentTimestamp === newCurrentTimestamp) {
-				// Skip refreshing if it's still the same day
-				return;
-			}
-			// Update tasks categorization and UI
-			this.categorizeTasks();
-			this.updateTaskStats();
-			this.updateDueSoonSection();
-			this.refreshDateSectionsUI();
 		};
 
 		// Register the window focus event
@@ -194,103 +184,13 @@ export class ForecastComponent extends Component {
 		viewToggleBtn.setAttribute("aria-label", t("Toggle list/tree view"));
 
 		this.registerDomEvent(viewToggleBtn, "click", () => {
-			this.toggleViewMode();
-		});
-
-		// // Settings button
-		// this.settingsEl = actionsContainer.createDiv({
-		// 	cls: "forecast-settings",
-		// });
-		// setIcon(this.settingsEl, "settings");
-	}
-
-	private toggleViewMode() {
-		this.isTreeView = !this.isTreeView;
-
-		// Update toggle button icon
-		const viewToggleBtn = this.forecastHeaderEl.querySelector(
-			".view-toggle-btn"
-		) as HTMLElement;
-		if (viewToggleBtn) {
-			setIcon(viewToggleBtn, this.isTreeView ? "git-branch" : "list");
-		}
-
-		// Update sections display
-		this.refreshDateSectionsUI();
-	}
-
-	private createFocusBar() {
-		this.focusBarEl = this.taskContainerEl.createDiv({
-			cls: "forecast-focus-bar",
-		});
-
-		const focusInput = this.focusBarEl.createEl("input", {
-			cls: "focus-input",
-			attr: {
-				type: "text",
-				placeholder: t("Focusing on Work"),
-			},
-		});
-
-		const unfocusBtn = this.focusBarEl.createEl("button", {
-			cls: "unfocus-button",
-			text: t("Unfocus"),
-		});
-
-		this.registerDomEvent(unfocusBtn, "click", () => {
-			focusInput.value = "";
-		});
-	}
-
-	private createLeftColumn(parentEl: HTMLElement) {
-		this.leftColumnEl = parentEl.createDiv({
-			cls: "forecast-left-column",
-		});
-
-		if (Platform.isPhone) {
-			// Add close button for mobile sidebar
-			const closeBtn = this.leftColumnEl.createDiv({
-				cls: "forecast-sidebar-close",
+			this.store.dispatch({
+				type: ForecastActionType.TOGGLE_TREE_VIEW
 			});
 
-			new ExtraButtonComponent(closeBtn).setIcon("x").onClick(() => {
-				this.toggleLeftColumnVisibility(false);
-			});
-		}
-
-		// Stats bar for Past Due / Today / Future counts
-		this.createStatsBar(this.leftColumnEl);
-
-		// Calendar section
-		this.calendarContainerEl = this.leftColumnEl.createDiv({
-			cls: "forecast-calendar-section",
+			// Update the icon immediately
+			setIcon(viewToggleBtn, this.store.isInTreeView() ? "git-branch" : "list");
 		});
-
-		// Create and initialize calendar component
-		this.calendarComponent = new CalendarComponent(
-			this.calendarContainerEl
-		);
-		this.addChild(this.calendarComponent);
-		this.calendarComponent.load();
-
-		// Due Soon section below calendar
-		this.createDueSoonSection(this.leftColumnEl);
-
-		// Set up calendar events
-		this.calendarComponent.onDateSelected = (date, tasks) => {
-			const selectedDate = new Date(date);
-			selectedDate.setHours(0, 0, 0, 0);
-			this.selectedDate = selectedDate;
-
-			// Update the Coming Up section first
-			this.updateDueSoonSection();
-			// Then refresh the date sections in the right panel
-			this.refreshDateSectionsUI();
-
-			if (Platform.isPhone) {
-				this.toggleLeftColumnVisibility(false);
-			}
-		};
 	}
 
 	private createStatsBar(parentEl: HTMLElement) {
@@ -337,12 +237,57 @@ export class ForecastComponent extends Component {
 		createStatItem("future", t("Future"), 0, "future");
 	}
 
+	private createLeftColumn(parentEl: HTMLElement) {
+		this.leftColumnEl = parentEl.createDiv({
+			cls: "forecast-left-column",
+		});
+
+		if (Platform.isPhone) {
+			// Add close button for mobile sidebar
+			const closeBtn = this.leftColumnEl.createDiv({
+				cls: "forecast-sidebar-close",
+			});
+
+			new ExtraButtonComponent(closeBtn).setIcon("x").onClick(() => {
+				this.toggleLeftColumnVisibility(false);
+			});
+		}
+
+		// Stats bar for Past Due / Today / Future counts
+		this.createStatsBar(this.leftColumnEl);
+
+		// Calendar section
+		this.calendarContainerEl = this.leftColumnEl.createDiv({
+			cls: "forecast-calendar-section",
+		});
+
+		// Create and initialize calendar component
+		this.calendarComponent = new CalendarComponent(
+			this.calendarContainerEl
+		);
+		this.addChild(this.calendarComponent);
+		this.calendarComponent.load();
+
+		// Due Soon section below calendar
+		this.createDueSoonSection(this.leftColumnEl);
+
+		// Set up calendar events
+		this.calendarComponent.onDateSelected = (date, tasks) => {
+			this.store.dispatch({
+				type: ForecastActionType.SELECT_DATE,
+				payload: date
+			});
+
+			if (Platform.isPhone) {
+				this.toggleLeftColumnVisibility(false);
+			}
+		};
+	}
+
 	private createDueSoonSection(parentEl: HTMLElement) {
 		this.dueSoonContainerEl = parentEl.createDiv({
 			cls: "forecast-due-soon-section",
 		});
-
-		// Due soon entries will be added when tasks are set
 	}
 
 	private createRightColumn(parentEl: HTMLElement) {
@@ -353,30 +298,15 @@ export class ForecastComponent extends Component {
 		// Create header with project count and actions
 		this.createForecastHeader();
 
-		// Create focus filter bar
-		// this.createFocusBar();
-
 		this.taskListContainerEl = this.taskContainerEl.createDiv({
 			cls: "forecast-task-list",
 		});
-
-		// Date sections will be added when tasks are set
 	}
 
-	public setTasks(tasks: Task[]) {
-		this.allTasks = tasks;
-		this.allTasksMap = new Map(
-			this.allTasks.map((task) => [task.id, task])
-		);
-
-		// Update header count
+	// Main method to update UI based on store changes
+	private updateUI() {
+		// Update header counts
 		this.updateHeaderCount();
-
-		// Filter and categorize tasks
-		this.categorizeTasks();
-
-		// Update calendar with all tasks
-		this.calendarComponent.setTasks(this.allTasks);
 
 		// Update stats
 		this.updateTaskStats();
@@ -384,21 +314,39 @@ export class ForecastComponent extends Component {
 		// Update due soon section
 		this.updateDueSoonSection();
 
-		// Calculate and render date sections for the right column
-		this.calculateDateSections();
-		this.renderDateSectionsUI();
+		// Update date sections
+		this.refreshDateSectionsUI();
+
+		// Update view toggle button icon
+		const viewToggleBtn = this.forecastHeaderEl.querySelector(".view-toggle-btn") as HTMLElement;
+		if (viewToggleBtn) {
+			setIcon(viewToggleBtn, this.store.isInTreeView() ? "git-branch" : "list");
+		}
+	}
+
+	public setTasks(tasks: Task[]) {
+		// Update store via dispatch
+		this.store.dispatch({
+			type: ForecastActionType.SET_TASKS,
+			payload: tasks
+		});
+
+		// Update calendar with all tasks
+		this.calendarComponent.setTasks(tasks);
 	}
 
 	private updateHeaderCount() {
+		const allTasks = this.store.getAllTasks();
+
 		// Count actions (tasks) and unique projects
 		const projectSet = new Set<string>();
-		this.allTasks.forEach((task) => {
+		allTasks.forEach((task) => {
 			if (task.project) {
 				projectSet.add(task.project);
 			}
 		});
 
-		const taskCount = this.allTasks.length;
+		const taskCount = allTasks.length;
 		const projectCount = projectSet.size;
 
 		// Update header
@@ -412,74 +360,34 @@ export class ForecastComponent extends Component {
 		}
 	}
 
-	private categorizeTasks() {
-		// Use currentDate as today
-		const today = new Date(this.currentDate);
-		today.setHours(0, 0, 0, 0);
-		const todayTimestamp = today.getTime();
-
-		// Filter for incomplete tasks with a relevant date
-		const tasksWithRelevantDate = this.allTasks.filter(
-			(task) => this.getRelevantDate(task) !== undefined
-		);
-
-		// Split into past, today, and future based on relevantDate
-		this.pastTasks = tasksWithRelevantDate.filter((task) => {
-			const relevantTimestamp = this.getRelevantDate(task)!;
-			return relevantTimestamp < todayTimestamp;
-		});
-		this.todayTasks = tasksWithRelevantDate.filter((task) => {
-			const relevantTimestamp = this.getRelevantDate(task)!;
-			return relevantTimestamp === todayTimestamp;
-		});
-		this.futureTasks = tasksWithRelevantDate.filter((task) => {
-			const relevantTimestamp = this.getRelevantDate(task)!;
-			return relevantTimestamp > todayTimestamp;
-		});
-
-		// Sort tasks by priority and then relevant date
-		const sortTasksByPriorityAndRelevantDate = (tasks: Task[]) => {
-			return tasks.sort((a, b) => {
-				// First by priority (high to low)
-				const priorityA = a.priority || 0;
-				const priorityB = b.priority || 0;
-				if (priorityA !== priorityB) {
-					return priorityB - priorityA;
-				}
-
-				// Then by relevant date (early to late)
-				// Ensure dates exist before comparison
-				const relevantDateA = this.getRelevantDate(a);
-				const relevantDateB = this.getRelevantDate(b);
-
-				if (relevantDateA === undefined && relevantDateB === undefined)
-					return 0;
-				if (relevantDateA === undefined) return 1; // Place tasks without dates later
-				if (relevantDateB === undefined) return -1; // Place tasks without dates later
-
-				return relevantDateA - relevantDateB;
-			});
-		};
-
-		this.pastTasks = sortTasksByPriorityAndRelevantDate(this.pastTasks);
-		this.todayTasks = sortTasksByPriorityAndRelevantDate(this.todayTasks);
-		this.futureTasks = sortTasksByPriorityAndRelevantDate(this.futureTasks);
-	}
-
 	private updateTaskStats() {
+		const { past, today, future } = this.store.getTasksByCategory();
+
 		// Update counts in stats bar
 		const statItems = this.statsContainerEl.querySelectorAll(".stat-item");
 		statItems.forEach((item) => {
 			const countEl = item.querySelector(".stat-count");
 			if (countEl) {
-				// Note: Labels remain "Past Due", "Today", "Future" but now include scheduled tasks.
 				if (item.hasClass("tg-past-due")) {
-					countEl.textContent = this.pastTasks.length.toString(); // Use pastTasks
+					countEl.textContent = past.length.toString();
 				} else if (item.hasClass("tg-today")) {
-					countEl.textContent = this.todayTasks.length.toString();
+					countEl.textContent = today.length.toString();
 				} else if (item.hasClass("tg-future")) {
-					countEl.textContent = this.futureTasks.length.toString();
+					countEl.textContent = future.length.toString();
 				}
+			}
+		});
+
+		// Update active status for filter buttons
+		const currentFilter = this.store.getFocusFilter();
+		statItems.forEach((item) => {
+			item.removeClass("active");
+			if (currentFilter === "past-due" && item.hasClass("tg-past-due")) {
+				item.addClass("active");
+			} else if (currentFilter === "today" && item.hasClass("tg-today")) {
+				item.addClass("active");
+			} else if (currentFilter === "future" && item.hasClass("tg-future")) {
+				item.addClass("active");
 			}
 		});
 	}
@@ -488,38 +396,16 @@ export class ForecastComponent extends Component {
 		// Clear existing content
 		this.dueSoonContainerEl.empty();
 
-		// Use the current selected date as the starting point
-		// Always create a new date object to avoid reference issues
-		const baseDate = new Date(this.selectedDate);
-		baseDate.setHours(0, 0, 0, 0);
-
-		const dueSoonItems: { date: Date; tasks: Task[] }[] = [];
-
-		// Process tasks with relevant dates in the next 15 days from the selected date
-		for (let i = 0; i < 15; i++) {
-			const date = new Date(baseDate);
-			date.setDate(date.getDate() + i);
-
-			// Skip the selected day itself - Coming Up should show days *after* the selected one
-			if (date.getTime() === baseDate.getTime()) continue;
-
-			// Use the new function checking relevantDate
-			const tasksForDay = this.getTasksForRelevantDate(date);
-			if (tasksForDay.length > 0) {
-				dueSoonItems.push({
-					date: date,
-					tasks: tasksForDay,
-				});
-			}
-		}
+		// Get upcoming dates from store
+		const dueSoonItems = this.store.getUpcomingDates(this.store.getSelectedDate());
 
 		// Add a header
 		const headerEl = this.dueSoonContainerEl.createDiv({
 			cls: "due-soon-header",
 		});
-		headerEl.setText(t("Coming Up")); // Title remains "Coming Up"
+		headerEl.setText(t("Coming Up"));
 
-		// Create entries for upcoming tasks based on relevant date
+		// Create entries for upcoming tasks
 		dueSoonItems.forEach((item) => {
 			const itemEl = this.dueSoonContainerEl.createDiv({
 				cls: "due-soon-item",
@@ -542,7 +428,7 @@ export class ForecastComponent extends Component {
 				cls: "due-soon-count",
 			});
 
-			// Properly format the task count
+			// Format the task count
 			const taskCount = item.tasks.length;
 			countEl.setText(
 				`${taskCount} ${taskCount === 1 ? t("Task") : t("Tasks")}`
@@ -550,9 +436,8 @@ export class ForecastComponent extends Component {
 
 			// Add click handler to select this date in the calendar
 			this.registerDomEvent(itemEl, "click", () => {
+				// Calendar will trigger onDateSelected which updates the store
 				this.calendarComponent.selectDate(item.date);
-				// this.selectedDate = item.date; // This is now handled by calendarComponent.onDateSelected
-				// this.refreshDateSectionsUI(); // This is now handled by calendarComponent.onDateSelected
 
 				if (Platform.isPhone) {
 					this.toggleLeftColumnVisibility(false);
@@ -587,84 +472,22 @@ export class ForecastComponent extends Component {
 		return `${monthNames[date.getMonth()]} ${date.getDate()}`;
 	}
 
-	private calculateDateSections() {
-		this.dateSections = [];
+	private refreshDateSectionsUI() {
+		this.cleanupRenderers();
 
-		// Today section
-		if (this.todayTasks.length > 0) {
-			this.dateSections.push({
-				title: this.formatSectionTitleForDate(this.currentDate), // Use helper for consistent title
-				date: new Date(this.currentDate),
-				tasks: this.todayTasks, // Use categorized todayTasks
-				isExpanded: true,
-			});
-		}
+		// Get date sections from store
+		this.dateSections = this.store.getDateSections();
 
-		// Future sections by relevant date
-		const dateMap = new Map<string, Task[]>();
-		this.futureTasks.forEach((task) => {
-			const relevantTimestamp = this.getRelevantDate(task);
-			if (relevantTimestamp) {
-				const date = new Date(relevantTimestamp); // Already zeroed by getRelevantDate logic implicitly via getTime()
-				// Use local date components for the key to avoid timezone shifts in map key
-				const dateKey = `${date.getFullYear()}-${String(
-					date.getMonth() + 1
-				).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-				if (!dateMap.has(dateKey)) {
-					dateMap.set(dateKey, []);
-				}
-				// Ensure task is added only once per relevant date section
-				if (!dateMap.get(dateKey)!.some((t) => t.id === task.id)) {
-					dateMap.get(dateKey)!.push(task);
-				}
-			}
-		});
-
-		// Sort dates and create sections
-		const sortedDates = Array.from(dateMap.keys()).sort();
-
-		sortedDates.forEach((dateKey) => {
-			const [year, month, day] = dateKey.split("-").map(Number);
-			const date = new Date(year, month - 1, day);
-			const tasks = dateMap.get(dateKey)!; // Tasks should already be sorted by priority within category
-
-			const today = new Date(this.currentDate);
-			today.setHours(0, 0, 0, 0);
-
-			// Use helper for title
-			const title = this.formatSectionTitleForDate(date);
-
-			this.dateSections.push({
-				title: title,
-				date: date,
-				tasks: tasks,
-				isExpanded: this.shouldExpandFutureSection(
-					date,
-					this.currentDate
-				), // Expand based on relation to today
-			});
-		});
-
-		// Past section (if any) - using pastTasks
-		// Title remains "Past Due" but covers overdue and past scheduled.
-		if (this.pastTasks.length > 0) {
-			this.dateSections.unshift({
-				title: t("Past Due"), // Keep title for now
-				date: new Date(0), // Placeholder date
-				tasks: this.pastTasks, // Use pastTasks
-				isExpanded: true,
-			});
-		}
+		// Render the sections
+		this.renderDateSectionsUI();
 	}
 
 	private renderDateSectionsUI() {
+		// Clean up any existing components
 		this.cleanupRenderers();
 
-		// Ensure the map is up-to-date (belt and suspenders)
-		this.allTasksMap = new Map(
-			this.allTasks.map((task) => [task.id, task])
-		);
+		// Get tasks map from store
+		const tasksMap = this.store.getTasksMap();
 
 		if (this.dateSections.length === 0) {
 			const emptyEl = this.taskListContainerEl.createDiv({
@@ -757,300 +580,42 @@ export class ForecastComponent extends Component {
 			// Render tasks using the section's renderer
 			section.renderer.renderTasks(
 				section.tasks,
-				this.isTreeView,
-				this.allTasksMap,
+				this.store.isInTreeView(),
+				tasksMap,
 				t("No tasks for this section.")
 			);
 		});
 	}
 
-	private formatDate(date: Date): string {
-		const months = [
-			"January",
-			"February",
-			"March",
-			"April",
-			"May",
-			"June",
-			"July",
-			"August",
-			"September",
-			"October",
-			"November",
-			"December",
-		];
-		return `${
-			months[date.getMonth()]
-		} ${date.getDate()}, ${date.getFullYear()}`;
-	}
-
 	private focusTaskList(type: string) {
-		// Clear previous focus
-		const statItems = this.statsContainerEl.querySelectorAll(".stat-item");
-		statItems.forEach((item) => item.classList.remove("active"));
+		// Get current focus filter
+		const currentFilter = this.store.getFocusFilter();
 
-		// Set new focus
-		if (this.focusFilter === type) {
+		// Toggle or set filter via dispatch
+		if (currentFilter === type) {
 			// Toggle off if already selected
-			this.focusFilter = null;
-		} else {
-			this.focusFilter = type;
-			const activeItem = this.statsContainerEl.querySelector(
-				`.stat-item.tg-${type}` // Use the type identifier passed during creation
-			);
-			if (activeItem) {
-				activeItem.classList.add("active");
-			}
-		}
-
-		// Update date sections based on filter using new task categories
-		if (this.focusFilter === "past-due") {
-			this.dateSections =
-				this.pastTasks.length > 0
-					? [
-							// Check if tasks exist
-							{
-								title: t("Past Due"), // Title kept
-								date: new Date(0),
-								tasks: this.pastTasks, // Use pastTasks
-								isExpanded: true,
-							},
-					  ]
-					: []; // Empty array if no past tasks
-		} else if (this.focusFilter === "today") {
-			this.dateSections =
-				this.todayTasks.length > 0
-					? [
-							// Check if tasks exist
-							{
-								title: this.formatSectionTitleForDate(
-									this.currentDate
-								), // Use helper
-								date: new Date(this.currentDate),
-								tasks: this.todayTasks, // Use todayTasks
-								isExpanded: true,
-							},
-					  ]
-					: []; // Empty array if no today tasks
-		} else if (this.focusFilter === "future") {
-			// Recalculate future sections using relevant dates
-			this.calculateDateSections(); // Recalculates all, including future
-			// Filter out past and today sections from the full recalculation
-			const todayTimestamp = new Date(this.currentDate).setHours(
-				0,
-				0,
-				0,
-				0
-			);
-			this.dateSections = this.dateSections.filter((section) => {
-				// Keep sections whose date is strictly after today
-				// Exclude the 'Past Due' section (date timestamp 0)
-				const sectionTimestamp = section.date.getTime();
-				return sectionTimestamp > todayTimestamp;
+			this.store.dispatch({
+				type: ForecastActionType.SET_FOCUS_FILTER,
+				payload: null
 			});
 		} else {
-			// No filter, show all sections (recalculate)
-			this.calculateDateSections();
-		}
-
-		// Re-render the sections
-		this.renderDateSectionsUI();
-	}
-
-	private refreshDateSectionsUI() {
-		// If there's a filter active, reset it
-		this.focusFilter = null;
-
-		this.cleanupRenderers();
-
-		// Calculate the sections based on the new selectedDate
-		this.calculateFilteredDateSections();
-
-		// Render the newly calculated sections
-		this.renderDateSectionsUI();
-	}
-
-	private calculateFilteredDateSections() {
-		this.dateSections = [];
-
-		// Use the helper function to get tasks for the selected date based on relevantDate
-		const selectedTasks = this.getTasksForRelevantDate(this.selectedDate);
-
-		const todayTimestamp = new Date(this.currentDate).setHours(0, 0, 0, 0);
-		const selectedTimestamp = new Date(this.selectedDate).setHours(
-			0,
-			0,
-			0,
-			0
-		);
-
-		// Section for the selected date
-		if (selectedTasks.length > 0) {
-			this.dateSections.push({
-				// Format title based on whether it's today, tomorrow, or other day relative to today
-				title: this.formatSectionTitleForDate(this.selectedDate), // Use helper
-				date: new Date(this.selectedDate),
-				tasks: selectedTasks,
-				isExpanded: true,
+			// Set new filter
+			this.store.dispatch({
+				type: ForecastActionType.SET_FOCUS_FILTER,
+				payload: type
 			});
 		}
-
-		// // Add overdue/past scheduled section if applicable (selected date is today or future, and past tasks exist)
-		// if (selectedTimestamp >= todayTimestamp && this.pastTasks.length > 0) {
-		// 	this.dateSections.unshift({
-		// 		title: t("Past Due"), // Keep title
-		// 		date: new Date(0), // Placeholder
-		// 		tasks: this.pastTasks, // Use pastTasks
-		// 		isExpanded: true,
-		// 	});
-		// }
-
-		// Add future sections relative to the selected date
-		// Filter futureTasks based on their relevantDate being after selectedDate
-		const futureTasksAfterSelected = this.futureTasks.filter((task) => {
-			const relevantTimestamp = this.getRelevantDate(task);
-			// Ensure relevantTimestamp exists and is strictly greater than selectedTimestamp
-			return (
-				relevantTimestamp !== undefined &&
-				relevantTimestamp > selectedTimestamp
-			);
-		});
-
-		const dateMap = new Map<string, Task[]>();
-		futureTasksAfterSelected.forEach((task) => {
-			// We already know relevantTimestamp is defined from the filter above
-			const relevantTimestamp = this.getRelevantDate(task)!;
-			const date = new Date(relevantTimestamp);
-			// Create date key
-			const dateKey = `${date.getFullYear()}-${String(
-				date.getMonth() + 1
-			).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-			if (!dateMap.has(dateKey)) {
-				dateMap.set(dateKey, []);
-			}
-			// Avoid duplicates if somehow a task slipped through category logic (unlikely but safe)
-			if (!dateMap.get(dateKey)!.some((t) => t.id === task.id)) {
-				dateMap.get(dateKey)!.push(task);
-			}
-		});
-
-		const sortedDates = Array.from(dateMap.keys()).sort();
-		sortedDates.forEach((dateKey) => {
-			const [year, month, day] = dateKey.split("-").map(Number);
-			const date = new Date(year, month - 1, day);
-			const tasks = dateMap.get(dateKey)!; // Tasks within category are sorted by priority
-
-			// Format title relative to today for consistency, but could be relative to selectedDate
-			// Let's stick to formatting relative to today (Today, Tomorrow, DayOfWeek)
-			let title = this.formatSectionTitleForDate(date);
-
-			this.dateSections.push({
-				title: title,
-				date: date,
-				tasks: tasks,
-				// Expand based on relation to the selected date
-				isExpanded: this.shouldExpandFutureSection(
-					date,
-					this.selectedDate
-				),
-			});
-		});
-
-		// Handle empty state in renderDateSectionsUI
-	}
-
-	// Helper to format section titles dynamically based on relation to today
-	private formatSectionTitleForDate(date: Date): string {
-		const dateTimestamp = new Date(date).setHours(0, 0, 0, 0);
-		const todayTimestamp = new Date(this.currentDate).setHours(0, 0, 0, 0);
-
-		let prefix = "";
-		const dayDiffFromToday = Math.round(
-			(dateTimestamp - todayTimestamp) / (1000 * 3600 * 24)
-		);
-
-		if (dayDiffFromToday === 0) {
-			prefix = t("Today") + ", ";
-		} else if (dayDiffFromToday === 1) {
-			prefix = t("Tomorrow") + ", ";
-		}
-		// else: no prefix for other days
-
-		// Use full day name
-		const dayOfWeek = [
-			"Sunday",
-			"Monday",
-			"Tuesday",
-			"Wednesday",
-			"Thursday",
-			"Friday",
-			"Saturday",
-		][date.getDay()];
-		const formattedDate = this.formatDate(date); // e.g., "January 1, 2024"
-
-		// For Today, just show "Today - Full Date"
-		if (dayDiffFromToday === 0) {
-			return t("Today") + " — " + formattedDate;
-		}
-
-		// For others, show Prefix + DayOfWeek + Full Date
-		return `${prefix}${dayOfWeek}, ${formattedDate}`;
-	}
-
-	// Helper to decide if a future section should be expanded relative to a comparison date
-	private shouldExpandFutureSection(
-		sectionDate: Date,
-		compareDate: Date
-	): boolean {
-		const compareTimestamp = new Date(compareDate).setHours(0, 0, 0, 0);
-		const sectionTimestamp = new Date(sectionDate).setHours(0, 0, 0, 0);
-		// Calculate difference in days from the comparison date
-		const dayDiff = Math.round(
-			(sectionTimestamp - compareTimestamp) / (1000 * 3600 * 24)
-		);
-		// Expand if the section date is within the next 7 days *after* the comparison date
-		return dayDiff > 0 && dayDiff <= 7;
-	}
-
-	// Renaming getTasksForDate to be more specific about its check
-	private getTasksForRelevantDate(date: Date): Task[] {
-		if (!date) return [];
-
-		const targetTimestamp = new Date(date).setHours(0, 0, 0, 0);
-
-		return this.allTasks.filter((task) => {
-			const relevantTimestamp = this.getRelevantDate(task);
-			return relevantTimestamp === targetTimestamp;
-		});
 	}
 
 	public updateTask(updatedTask: Task) {
-		// Update in the main list
-		const taskIndex = this.allTasks.findIndex(
-			(t) => t.id === updatedTask.id
-		);
-		if (taskIndex !== -1) {
-			this.allTasks[taskIndex] = updatedTask;
-		} else {
-			this.allTasks.push(updatedTask); // Add if new
-		}
-		this.allTasksMap.set(updatedTask.id, updatedTask);
+		// Update task in store via dispatch
+		this.store.dispatch({
+			type: ForecastActionType.UPDATE_TASK,
+			payload: updatedTask
+		});
 
-		// Re-categorize tasks based on potentially changed relevantDate
-		this.categorizeTasks();
-
-		this.updateHeaderCount();
-		this.updateTaskStats();
-		this.updateDueSoonSection();
-		this.calendarComponent.setTasks(this.allTasks);
-
-		// Refresh UI based on current view state (filtered or full)
-		if (this.focusFilter) {
-			this.focusTaskList(this.focusFilter);
-		} else {
-			this.refreshDateSectionsUI();
-		}
+		// Update calendar
+		this.calendarComponent.setTasks(this.store.getAllTasks());
 	}
 
 	private cleanupRenderers() {
@@ -1091,16 +656,5 @@ export class ForecastComponent extends Component {
 				}
 			}, 300); // Match CSS transition duration
 		}
-	}
-
-	private getRelevantDate(task: Task): number | undefined {
-		// Prioritize scheduledDate, fallback to dueDate
-		const dateToUse = task.scheduledDate || task.dueDate;
-		if (!dateToUse) return undefined;
-
-		// Return timestamp (or Date object if needed elsewhere, but timestamp is good for comparisons)
-		const date = new Date(dateToUse);
-		date.setHours(0, 0, 0, 0); // Zero out time for consistent comparison
-		return date.getTime();
 	}
 }
