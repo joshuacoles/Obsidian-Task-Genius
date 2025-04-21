@@ -3,6 +3,58 @@ import { t } from "../../translations/helper";
 import { DateSection } from "./forecast";
 
 /**
+ * Action types for the store
+ */
+export enum ForecastActionType {
+	SET_TASKS = 'SET_TASKS',
+	UPDATE_TASK = 'UPDATE_TASK',
+	SELECT_DATE = 'SELECT_DATE',
+	UPDATE_CURRENT_DATE = 'UPDATE_CURRENT_DATE',
+	SET_FOCUS_FILTER = 'SET_FOCUS_FILTER',
+	TOGGLE_TREE_VIEW = 'TOGGLE_TREE_VIEW'
+}
+
+/**
+ * Action interfaces
+ */
+export interface SetTasksAction {
+	type: ForecastActionType.SET_TASKS;
+	payload: Task[];
+}
+
+export interface UpdateTaskAction {
+	type: ForecastActionType.UPDATE_TASK;
+	payload: Task;
+}
+
+export interface SelectDateAction {
+	type: ForecastActionType.SELECT_DATE;
+	payload: Date;
+}
+
+export interface UpdateCurrentDateAction {
+	type: ForecastActionType.UPDATE_CURRENT_DATE;
+	payload: Date;
+}
+
+export interface SetFocusFilterAction {
+	type: ForecastActionType.SET_FOCUS_FILTER;
+	payload: string | null;
+}
+
+export interface ToggleTreeViewAction {
+	type: ForecastActionType.TOGGLE_TREE_VIEW;
+}
+
+export type ForecastAction = 
+	| SetTasksAction
+	| UpdateTaskAction
+	| SelectDateAction
+	| UpdateCurrentDateAction
+	| SetFocusFilterAction
+	| ToggleTreeViewAction;
+
+/**
  * Central store for managing forecast view state
  */
 export class ForecastStore {
@@ -25,14 +77,45 @@ export class ForecastStore {
 		this.selectedDate = new Date(this.currentDate);
 	}
 
-	// State setters
-	public setTasks(tasks: Task[]): void {
+	/**
+	 * Central method to dispatch actions to the store
+	 */
+	public dispatch(action: ForecastAction): void {
+		switch (action.type) {
+			case ForecastActionType.SET_TASKS:
+				this.setTasks(action.payload);
+				break;
+			
+			case ForecastActionType.UPDATE_TASK:
+				this.updateTask(action.payload);
+				break;
+			
+			case ForecastActionType.SELECT_DATE:
+				this.setSelectedDate(action.payload);
+				break;
+			
+			case ForecastActionType.UPDATE_CURRENT_DATE:
+				this.setCurrentDate(action.payload);
+				break;
+			
+			case ForecastActionType.SET_FOCUS_FILTER:
+				this.setFocusFilter(action.payload);
+				break;
+			
+			case ForecastActionType.TOGGLE_TREE_VIEW:
+				this.toggleTreeView();
+				break;
+		}
+	}
+
+	// State setters - now private as they should only be called via dispatch
+	private setTasks(tasks: Task[]): void {
 		this.tasks = tasks;
 		this.tasksMap = new Map(tasks.map(task => [task.id, task]));
 		this.notifyChange();
 	}
 
-	public updateTask(task: Task): void {
+	private updateTask(task: Task): void {
 		const index = this.tasks.findIndex(t => t.id === task.id);
 		if (index !== -1) {
 			this.tasks[index] = task;
@@ -43,29 +126,29 @@ export class ForecastStore {
 		this.notifyChange();
 	}
 
-	public setSelectedDate(date: Date): void {
+	private setSelectedDate(date: Date): void {
 		this.selectedDate = new Date(date);
 		this.selectedDate.setHours(0, 0, 0, 0);
 		this.notifyChange();
 	}
 
-	public setCurrentDate(date: Date): void {
+	private setCurrentDate(date: Date): void {
 		this.currentDate = new Date(date);
 		this.currentDate.setHours(0, 0, 0, 0);
 		this.notifyChange();
 	}
 
-	public setFocusFilter(filter: string | null): void {
+	private setFocusFilter(filter: string | null): void {
 		this.focusFilter = filter;
 		this.notifyChange();
 	}
 
-	public setTreeView(isTreeView: boolean): void {
+	private setTreeView(isTreeView: boolean): void {
 		this.isTreeView = isTreeView;
 		this.notifyChange();
 	}
 
-	public toggleTreeView(): void {
+	private toggleTreeView(): void {
 		this.isTreeView = !this.isTreeView;
 		this.notifyChange();
 	}

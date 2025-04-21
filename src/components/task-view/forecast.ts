@@ -8,7 +8,7 @@ import "../../styles/calendar.css";
 import { TaskTreeItemComponent } from "./treeItem";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
-import { ForecastStore } from "./forecastStore";
+import { ForecastStore, ForecastActionType } from "./forecastStore";
 
 export interface DateSection {
 	title: string;
@@ -38,7 +38,7 @@ export class ForecastComponent extends Component {
 	private calendarComponent: CalendarComponent;
 	private taskComponents: TaskListItemComponent[] = [];
 
-	// State - replaced with store
+	// State and rendering
 	private store: ForecastStore;
 	private windowFocusHandler: () => void;
 	private treeComponents: TaskTreeItemComponent[] = [];
@@ -49,8 +49,7 @@ export class ForecastComponent extends Component {
 	public onTaskCompleted: (task: Task) => void;
 
 	// Context menu
-	public onTaskContextMenu: (event: MouseEvent, task: Task) => void =
-		() => {};
+	public onTaskContextMenu: (event: MouseEvent, task: Task) => void = () => {};
 
 	constructor(
 		private parentEl: HTMLElement,
@@ -96,8 +95,11 @@ export class ForecastComponent extends Component {
 
 			// Only update if the date has actually changed
 			if (oldCurrentDate.getTime() !== newCurrentDate.getTime()) {
-				// Update current date in store
-				this.store.setCurrentDate(newCurrentDate);
+				// Update current date in store via dispatch
+				this.store.dispatch({
+					type: ForecastActionType.UPDATE_CURRENT_DATE,
+					payload: newCurrentDate
+				});
 
 				// Update the calendar's current date
 				this.calendarComponent.setCurrentDate(newCurrentDate);
@@ -111,10 +113,14 @@ export class ForecastComponent extends Component {
 
 				// Check if selectedDate equals oldCurrentDate (was on "today")
 				// and if the new current date is after the selected date
-				if (selectedDateTimestamp === oldCurrentTimestamp &&
+				if (selectedDateTimestamp === oldCurrentTimestamp && 
 					selectedDateTimestamp < newCurrentTimestamp) {
 					// Update selected date to the new current date
-					this.store.setSelectedDate(newCurrentDate);
+					this.store.dispatch({
+						type: ForecastActionType.SELECT_DATE,
+						payload: newCurrentDate
+					});
+					
 					// Update the calendar's selected date
 					this.calendarComponent.selectDate(newCurrentDate);
 				}
@@ -174,7 +180,12 @@ export class ForecastComponent extends Component {
 		viewToggleBtn.setAttribute("aria-label", t("Toggle list/tree view"));
 
 		this.registerDomEvent(viewToggleBtn, "click", () => {
-			this.store.toggleTreeView();
+			this.store.dispatch({
+				type: ForecastActionType.TOGGLE_TREE_VIEW
+			});
+			
+			// Update the icon immediately
+			setIcon(viewToggleBtn, this.store.isInTreeView() ? "git-branch" : "list");
 		});
 	}
 
@@ -258,7 +269,10 @@ export class ForecastComponent extends Component {
 
 		// Set up calendar events
 		this.calendarComponent.onDateSelected = (date, tasks) => {
-			this.store.setSelectedDate(date);
+			this.store.dispatch({
+				type: ForecastActionType.SELECT_DATE,
+				payload: date
+			});
 
 			if (Platform.isPhone) {
 				this.toggleLeftColumnVisibility(false);
@@ -270,8 +284,6 @@ export class ForecastComponent extends Component {
 		this.dueSoonContainerEl = parentEl.createDiv({
 			cls: "forecast-due-soon-section",
 		});
-
-		// Due soon entries will be added when tasks are set
 	}
 
 	private createRightColumn(parentEl: HTMLElement) {
@@ -285,8 +297,6 @@ export class ForecastComponent extends Component {
 		this.taskListContainerEl = this.taskContainerEl.createDiv({
 			cls: "forecast-task-list",
 		});
-
-		// Date sections will be added when tasks are set
 	}
 
 	// Main method to update UI based on store changes
@@ -302,11 +312,20 @@ export class ForecastComponent extends Component {
 		
 		// Update date sections
 		this.refreshDateSectionsUI();
+		
+		// Update view toggle button icon
+		const viewToggleBtn = this.forecastHeaderEl.querySelector(".view-toggle-btn") as HTMLElement;
+		if (viewToggleBtn) {
+			setIcon(viewToggleBtn, this.store.isInTreeView() ? "git-branch" : "list");
+		}
 	}
 
 	public setTasks(tasks: Task[]) {
-		// Update store
-		this.store.setTasks(tasks);
+		// Update store via dispatch
+		this.store.dispatch({
+			type: ForecastActionType.SET_TASKS,
+			payload: tasks
+		});
 		
 		// Update calendar with all tasks
 		this.calendarComponent.setTasks(tasks);
@@ -354,6 +373,19 @@ export class ForecastComponent extends Component {
 				}
 			}
 		});
+		
+		// Update active status for filter buttons
+		const currentFilter = this.store.getFocusFilter();
+		statItems.forEach((item) => {
+			item.removeClass("active");
+			if (currentFilter === "past-due" && item.hasClass("tg-past-due")) {
+				item.addClass("active");
+			} else if (currentFilter === "today" && item.hasClass("tg-today")) {
+				item.addClass("active");
+			} else if (currentFilter === "future" && item.hasClass("tg-future")) {
+				item.addClass("active");
+			}
+		});
 	}
 
 	private updateDueSoonSection() {
@@ -392,7 +424,7 @@ export class ForecastComponent extends Component {
 				cls: "due-soon-count",
 			});
 
-			// Properly format the task count
+			// Format the task count
 			const taskCount = item.tasks.length;
 			countEl.setText(
 				`${taskCount} ${taskCount === 1 ? t("Task") : t("Tasks")}`
@@ -400,6 +432,7 @@ export class ForecastComponent extends Component {
 
 			// Add click handler to select this date in the calendar
 			this.registerDomEvent(itemEl, "click", () => {
+				// Calendar will trigger onDateSelected which updates the store
 				this.calendarComponent.selectDate(item.date);
 
 				if (Platform.isPhone) {
@@ -546,31 +579,31 @@ export class ForecastComponent extends Component {
 	}
 
 	private focusTaskList(type: string) {
-		// Clear previous focus
-		const statItems = this.statsContainerEl.querySelectorAll(".stat-item");
-		statItems.forEach((item) => item.classList.remove("active"));
-
 		// Get current focus filter
 		const currentFilter = this.store.getFocusFilter();
 
-		// Set new focus
+		// Toggle or set filter via dispatch
 		if (currentFilter === type) {
 			// Toggle off if already selected
-			this.store.setFocusFilter(null);
+			this.store.dispatch({
+				type: ForecastActionType.SET_FOCUS_FILTER,
+				payload: null
+			});
 		} else {
-			this.store.setFocusFilter(type);
-			const activeItem = this.statsContainerEl.querySelector(
-				`.stat-item.tg-${type}`
-			);
-			if (activeItem) {
-				activeItem.classList.add("active");
-			}
+			// Set new filter
+			this.store.dispatch({
+				type: ForecastActionType.SET_FOCUS_FILTER,
+				payload: type
+			});
 		}
 	}
 
 	public updateTask(updatedTask: Task) {
-		// Update task in store
-		this.store.updateTask(updatedTask);
+		// Update task in store via dispatch
+		this.store.dispatch({
+			type: ForecastActionType.UPDATE_TASK,
+			payload: updatedTask
+		});
 		
 		// Update calendar
 		this.calendarComponent.setTasks(this.store.getAllTasks());
