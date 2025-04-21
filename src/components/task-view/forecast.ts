@@ -489,6 +489,19 @@ export class ForecastComponent extends Component {
 		// Get tasks map from store
 		const tasksMap = this.store.getTasksMap();
 
+		// Reset title if we're not showing a single section
+		if (this.dateSections.length !== 1 && this.titleEl) {
+			if (this.store.getFocusFilter() === "past-due") {
+				this.titleEl.setText(t("Past Due"));
+			} else if (this.store.getFocusFilter() === "today") {
+				this.titleEl.setText(t("Today"));
+			} else if (this.store.getFocusFilter() === "future") {
+				this.titleEl.setText(t("Future"));
+			} else {
+				this.titleEl.setText(t("Forecast"));
+			}
+		}
+
 		if (this.dateSections.length === 0) {
 			const emptyEl = this.taskListContainerEl.createDiv({
 				cls: "forecast-empty-state",
@@ -497,6 +510,38 @@ export class ForecastComponent extends Component {
 			return;
 		}
 
+		// Special case for single date section
+		if (this.dateSections.length === 1) {
+			const section = this.dateSections[0];
+			
+			// Update the title in the header
+			if (this.titleEl) {
+				this.titleEl.setText(section.title);
+			}
+
+			// Create and configure renderer
+			section.renderer = new TaskListRendererComponent(
+				this,
+				this.taskListContainerEl,
+				this.app,
+				"forecast"
+			);
+
+			if (this.params.onTaskSelected) section.renderer.onTaskSelected = this.params.onTaskSelected;
+			if (this.params.onTaskCompleted) section.renderer.onTaskCompleted = this.params.onTaskCompleted;
+			if (this.params.onTaskContextMenu) section.renderer.onTaskContextMenu = this.params.onTaskContextMenu;
+
+			// Render tasks directly in the container
+			section.renderer.renderTasks(
+				section.tasks,
+				this.store.isInTreeView(),
+				tasksMap,
+				t("No tasks for this section.")
+			);
+			return;
+		}
+
+		// Multiple sections - render with headers
 		this.dateSections.forEach((section) => {
 			const sectionEl = this.taskListContainerEl.createDiv({
 				cls: "task-date-section",
@@ -568,14 +613,10 @@ export class ForecastComponent extends Component {
 				this.app,
 				"forecast"
 			);
-			this.params.onTaskSelected &&
-				(section.renderer.onTaskSelected = this.params.onTaskSelected);
-			this.params.onTaskCompleted &&
-				(section.renderer.onTaskCompleted =
-					this.params.onTaskCompleted);
-			this.params.onTaskContextMenu &&
-				(section.renderer.onTaskContextMenu =
-					this.params.onTaskContextMenu);
+
+			if (this.params.onTaskSelected) section.renderer.onTaskSelected = this.params.onTaskSelected;
+			if (this.params.onTaskCompleted) section.renderer.onTaskCompleted = this.params.onTaskCompleted;
+			if (this.params.onTaskContextMenu) section.renderer.onTaskContextMenu = this.params.onTaskContextMenu;
 
 			// Render tasks using the section's renderer
 			section.renderer.renderTasks(
