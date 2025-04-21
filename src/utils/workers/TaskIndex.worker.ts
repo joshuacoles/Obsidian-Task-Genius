@@ -669,6 +669,19 @@ function processFile(
 ): TaskParseResult {
 	const startTime = performance.now();
 	try {
+		if (filePath.startsWith("Archive")) {
+			return {
+				type: "parseResult",
+				filePath,
+				tasks: [],
+				stats: {
+					totalTasks: 0,
+					completedTasks: 0,
+					processingTimeMs: Math.round(performance.now() - startTime),
+				},
+			};
+		}
+
 		const tasks = parseTasksFromContent(
 			filePath,
 			content,
