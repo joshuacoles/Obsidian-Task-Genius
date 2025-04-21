@@ -176,6 +176,14 @@ export class ForecastComponent extends Component {
 			cls: "forecast-actions",
 		});
 
+		// Expand/Collapse all sections button (initially hidden)
+		const expandCollapseBtn = actionsContainer.createDiv({
+			cls: "expand-collapse-btn",
+		});
+		setIcon(expandCollapseBtn, "fold-vertical");
+		expandCollapseBtn.setAttribute("aria-label", t("Expand/collapse all sections"));
+		expandCollapseBtn.hide(); // Hidden by default, will show when multiple sections exist
+
 		// List/Tree toggle button
 		const viewToggleBtn = actionsContainer.createDiv({
 			cls: "view-toggle-btn",
@@ -190,6 +198,10 @@ export class ForecastComponent extends Component {
 
 			// Update the icon immediately
 			setIcon(viewToggleBtn, this.store.isInTreeView() ? "git-branch" : "list");
+		});
+
+		this.registerDomEvent(expandCollapseBtn, "click", () => {
+			this.toggleAllSections();
 		});
 	}
 
@@ -502,6 +514,26 @@ export class ForecastComponent extends Component {
 			}
 		}
 
+		// Toggle visibility of expand/collapse button based on section count
+		const expandCollapseBtn = this.forecastHeaderEl.querySelector(".expand-collapse-btn") as HTMLElement;
+		if (expandCollapseBtn) {
+			if (this.dateSections.length > 1) {
+				expandCollapseBtn.show();
+				
+				// Set the initial icon based on current sections state
+				const allExpanded = this.dateSections.every(section => section.isExpanded);
+				const anyCollapsed = this.dateSections.some(section => !section.isExpanded);
+				
+				setIcon(expandCollapseBtn, 
+					allExpanded ? "fold-horizontal" : "fold-vertical");
+				
+				expandCollapseBtn.setAttribute("aria-label", 
+					allExpanded ? t("Collapse all sections") : t("Expand all sections"));
+			} else {
+				expandCollapseBtn.hide();
+			}
+		}
+
 		if (this.dateSections.length === 0) {
 			const emptyEl = this.taskListContainerEl.createDiv({
 				cls: "forecast-empty-state",
@@ -603,7 +635,12 @@ export class ForecastComponent extends Component {
 					toggleEl,
 					section.isExpanded ? "chevron-down" : "chevron-right"
 				);
-				section.isExpanded ? taskListEl.show() : taskListEl.hide();
+				
+				if (section.isExpanded) {
+					taskListEl.show();
+				} else {
+					taskListEl.hide();
+				}
 			});
 
 			// Create and configure renderer for this section
@@ -696,6 +733,50 @@ export class ForecastComponent extends Component {
 					this.leftColumnEl.hide();
 				}
 			}, 300); // Match CSS transition duration
+		}
+	}
+
+	// Toggle all sections expanded/collapsed state
+	private toggleAllSections() {
+		// Determine if we should expand or collapse based on current state
+		// If any section is collapsed, we'll expand all sections
+		const anyCollapsed = this.dateSections.some(section => !section.isExpanded);
+		
+		// Set all sections to the new state and update UI
+		const sectionElements = this.taskListContainerEl.querySelectorAll('.task-date-section');
+		
+		this.dateSections.forEach((section, index) => {
+			// Update the section model
+			section.isExpanded = anyCollapsed;
+			
+			// Update the corresponding DOM elements if they exist
+			if (index < sectionElements.length) {
+				const sectionEl = sectionElements[index] as HTMLElement;
+				const toggleEl = sectionEl.querySelector('.section-toggle') as HTMLElement;
+				const taskListEl = sectionEl.querySelector('.section-tasks') as HTMLElement;
+				
+				// Update the toggle icon
+				if (toggleEl) {
+					setIcon(toggleEl, anyCollapsed ? "chevron-down" : "chevron-right");
+				}
+				
+				// Show/hide the task list
+				if (taskListEl) {
+					if (anyCollapsed) {
+						taskListEl.style.display = 'block';
+					} else {
+						taskListEl.style.display = 'none';
+					}
+				}
+			}
+		});
+		
+		// Update the expand/collapse button icon to indicate current state
+		const expandCollapseBtn = this.forecastHeaderEl.querySelector('.expand-collapse-btn') as HTMLElement;
+		if (expandCollapseBtn) {
+			setIcon(expandCollapseBtn, anyCollapsed ? "fold-horizontal" : "fold-vertical");
+			expandCollapseBtn.setAttribute("aria-label", 
+				anyCollapsed ? t("Collapse all sections") : t("Expand all sections"));
 		}
 	}
 }
