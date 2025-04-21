@@ -573,8 +573,21 @@ function parseTasksFromContent(
 			tasks.push(task);
 		}
 	}
-	buildTaskHierarchy(tasks); // Call hierarchy builder if needed
-	return tasks;
+
+	// Filter out tasks with any date before 2024-01-01
+	const minDate = new Date('2024-01-01').getTime();
+	const filteredTasks = tasks.filter(task => {
+		// Check all date fields
+		if (task.createdDate && task.createdDate < minDate) return false;
+		if (task.startDate && task.startDate < minDate) return false;
+		if (task.scheduledDate && task.scheduledDate < minDate) return false;
+		if (task.dueDate && task.dueDate < minDate) return false;
+		if (task.completedDate && task.completedDate < minDate) return false;
+		return true;
+	});
+
+	buildTaskHierarchy(filteredTasks); // Call hierarchy builder if needed
+	return filteredTasks;
 }
 
 /**
