@@ -252,92 +252,71 @@ export class ForecastStore {
 
 	public getDateSections(): DateSection[] {
 		const {past, today, future} = this.getTasksByCategory();
-		const sections: DateSection[] = [];
-		const todayTimestamp = new Date(this.currentDate).setHours(0, 0, 0, 0);
-		const selectedTimestamp = new Date(this.selectedDate).setHours(0, 0, 0, 0);
 
 		// If we have a focus filter, only show the relevant section
 		if (this.focusFilter === "past-due") {
-			if (past.length > 0) {
-				sections.push({
-					title: t("Past Due"),
-					date: new Date(0),
-					tasks: past,
-					isExpanded: true
-				});
-			}
-			return sections;
-		}
+			const groupedPast = this.groupTasksByDate(past);
+			const sortedDates = Array.from(groupedPast.keys()).sort();
 
-		if (this.focusFilter === "today") {
+			if (sortedDates.length > 0) {
+				return sortedDates.map(dateKey => {
+					const [year, month, day] = dateKey.split("-").map(Number);
+					const date = new Date(year, month - 1, day);
+					const tasks = groupedPast.get(dateKey)!;
+
+					return {
+						title: this.formatSectionTitleForDate(date),
+						date: date,
+						tasks: tasks,
+						isExpanded: true
+					};
+				}).filter(section => section.tasks.length > 0);
+			} else {
+				return [];
+			}
+		} else if (this.focusFilter === "today") {
 			if (today.length > 0) {
-				sections.push({
+				return [{
 					title: this.formatSectionTitleForDate(this.currentDate),
 					date: new Date(this.currentDate),
 					tasks: today,
 					isExpanded: true
-				});
+				}];
+			} else {
+				return [];
 			}
-			return sections;
-		}
-
-		if (this.focusFilter === "future") {
+		} else if (this.focusFilter === "future") {
 			// Group future tasks by date
 			const dateMap = this.groupTasksByDate(future);
 			const sortedDates = Array.from(dateMap.keys()).sort();
 
-			sortedDates.forEach(dateKey => {
+			return sortedDates.map(dateKey => {
 				const [year, month, day] = dateKey.split("-").map(Number);
 				const date = new Date(year, month - 1, day);
 				const tasks = dateMap.get(dateKey)!;
 
-				sections.push({
+				return {
 					title: this.formatSectionTitleForDate(date),
 					date: date,
 					tasks: tasks,
 					isExpanded: this.shouldExpandFutureSection(date, this.currentDate)
-				});
-			});
+				};
+			}).filter(section => section.tasks.length > 0);
+		} else {
+			// When showing tasks for selected date
+			const selectedTasks = this.getTasksForDate(this.selectedDate);
 
-			return sections;
+			if (selectedTasks.length > 0) {
+				return [{
+					title: this.formatSectionTitleForDate(this.selectedDate),
+					date: new Date(this.selectedDate),
+					tasks: selectedTasks,
+					isExpanded: true
+				}];
+			} else {
+				return [];
+			}
 		}
-
-		// When showing tasks for selected date
-		const selectedTasks = this.getTasksForDate(this.selectedDate);
-
-		if (selectedTasks.length > 0) {
-			sections.push({
-				title: this.formatSectionTitleForDate(this.selectedDate),
-				date: new Date(this.selectedDate),
-				tasks: selectedTasks,
-				isExpanded: true
-			});
-		}
-
-		// Add future sections after selected date
-		const futureTasksAfterSelected = future.filter(task => {
-			const relevantTimestamp = this.getRelevantDate(task);
-			return relevantTimestamp !== undefined && relevantTimestamp > selectedTimestamp;
-		});
-
-		// Group by date
-		const dateMap = this.groupTasksByDate(futureTasksAfterSelected);
-		const sortedDates = Array.from(dateMap.keys()).sort();
-
-		sortedDates.forEach(dateKey => {
-			const [year, month, day] = dateKey.split("-").map(Number);
-			const date = new Date(year, month - 1, day);
-			const tasks = dateMap.get(dateKey)!;
-
-			sections.push({
-				title: this.formatSectionTitleForDate(date),
-				date: date,
-				tasks: tasks,
-				isExpanded: this.shouldExpandFutureSection(date, this.selectedDate)
-			});
-		});
-
-		return sections;
 	}
 
 	public getUpcomingDates(baseDate: Date, daysToLook: number = 15): { date: Date, tasks: Task[] }[] {
