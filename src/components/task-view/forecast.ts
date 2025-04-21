@@ -858,11 +858,8 @@ export class ForecastComponent extends Component {
 	}
 
 	private refreshDateSectionsUI() {
-		// Update sections based on selected date
-		if (this.focusFilter) {
-			// If there's a filter active, don't change the sections
-			return;
-		}
+		// If there's a filter active, reset it
+		this.focusFilter = null;
 
 		this.cleanupRenderers();
 
