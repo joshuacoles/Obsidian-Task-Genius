@@ -398,7 +398,7 @@ function parseTasksFromContent(
 				continue;
 
 			// Skip DayPlanner style items
-			if (contentWithMetadata.trim().match(/^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}/)) {
+			if (contentWithMetadata.trim().match(/^\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?/)) {
 				continue;
 			}
 
