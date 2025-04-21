@@ -511,6 +511,11 @@ function parseTasksFromContent(
 			if (status === undefined || contentWithMetadata === undefined)
 				continue;
 
+			// Skip DayPlanner style items
+			if (contentWithMetadata.trim().match(/^\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?/)) {
+				continue;
+			}
+
 			const completed = status.toLowerCase() === "x";
 			const id = `${filePath}-L${i}`;
 
