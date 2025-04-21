@@ -36,7 +36,7 @@ export class CalendarComponent extends Component {
 	private tasks: Task[] = [];
 	private options: CalendarOptions = {
 		showWeekends: true,
-		firstDayOfWeek: 0,
+		firstDayOfWeek: 1,
 		showTaskCounts: true,
 	};
 
