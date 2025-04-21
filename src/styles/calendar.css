@@ -103,11 +103,11 @@
 	background-color: var(--background-modifier-hover);
 }
 
-.task-genius-view .mini-calendar-container .calendar-day.selected {
+.task-genius-view .mini-calendar-container .calendar-day.today {
 	background-color: var(--background-modifier-border-hover);
 }
 
-.task-genius-view .mini-calendar-container .calendar-day.today {
+.task-genius-view .mini-calendar-container .calendar-day.selected {
 	background-color: var(--interactive-accent-hover);
 	color: var(--text-on-accent);
 }
@@ -115,6 +115,10 @@
 .task-genius-view .mini-calendar-container .calendar-day.past-due {
 	color: var(--text-error);
 }
+
+/*.task-genius-view .mini-calendar-container .calendar-day.past {
+	opacity: 0.8;
+}*/
 
 .task-genius-view .mini-calendar-container .calendar-day.other-month {
 	opacity: 0.5;
