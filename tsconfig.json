@@ -12,7 +12,9 @@
 		"isolatedModules": true,
 		"strictNullChecks": true,
 		"lib": ["DOM", "ES5", "ES6", "ES7"],
-		"allowSyntheticDefaultImports": true
+		"allowSyntheticDefaultImports": true,
+		"jsx": "preserve",
+		"jsxImportSource": "solid-js"
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx", "src/utils/workers/**/*.ts"]
 }
