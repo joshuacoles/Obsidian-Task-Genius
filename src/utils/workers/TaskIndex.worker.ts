@@ -237,6 +237,8 @@ function extractPriority(
 	return remainingContent;
 }
 
+const PROJECT_TAG_REGEX = /#project\/([\w/-]+)/;
+
 function extractProject(
 	task: Task,
 	content: string,
@@ -261,6 +263,16 @@ function extractProject(
 	if (match && match[1]) {
 		task.project = match[1].trim();
 		// Do not remove here; let tag extraction handle it
+	}
+
+	// Fallback to dataview format if tasks is preferred, but we didn't find it earlier
+	if (!useDataview) {
+		match = remainingContent.match(DV_PROJECT_REGEX);
+		if (match && match[1]) {
+			task.project = match[1].trim();
+			remainingContent = remainingContent.replace(match[0], "");
+			return remainingContent;
+		}
 	}
 
 	return remainingContent;
