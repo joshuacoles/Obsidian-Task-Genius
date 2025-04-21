@@ -7,6 +7,7 @@ export interface CalendarDay {
 	tasks: Task[];
 	isToday: boolean;
 	isSelected: boolean;
+	isPast: boolean;
 	isPastDue: boolean;
 	isFuture: boolean;
 	isThisMonth: boolean;
@@ -260,6 +261,8 @@ export class CalendarComponent extends Component {
 	) {
 		// Filter tasks for this day
 		const dayTasks = this.getTasksForDate(date);
+		const isPast = isPastDue;
+		isPastDue = isPast && dayTasks.length > 0;
 
 		// Create calendar day object
 		const calendarDay: CalendarDay = {
@@ -267,6 +270,7 @@ export class CalendarComponent extends Component {
 			tasks: dayTasks,
 			isToday,
 			isSelected,
+			isPast,
 			isPastDue,
 			isFuture,
 			isThisMonth,
@@ -280,6 +284,7 @@ export class CalendarComponent extends Component {
 		if (!isThisMonth) dayEl.addClass("other-month");
 		if (isToday) dayEl.addClass("today");
 		if (isSelected) dayEl.addClass("selected");
+		if (isPast) dayEl.addClass("past");
 		if (isPastDue) dayEl.addClass("past-due");
 
 		// Day number
