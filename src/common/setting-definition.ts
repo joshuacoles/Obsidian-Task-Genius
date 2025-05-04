@@ -237,6 +237,7 @@ export interface TaskProgressBarSettings {
 	hideProgressBarTags: string;
 	hideProgressBarFolders: string;
 	hideProgressBarMetadata: string;
+	firstDayOfWeek?: number; // 0=Sun, 1=Mon, ..., 6=Sat; undefined=locale default
 
 	// Task Status Settings
 	autoCompleteParent: boolean;
@@ -318,6 +319,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	hideProgressBarTags: "no-progress,hide-progress",
 	hideProgressBarFolders: "",
 	hideProgressBarMetadata: "hide-progress-bar",
+	firstDayOfWeek: undefined, // Use locale default initially
 
 	// Task Status Defaults
 	autoCompleteParent: true,

@@ -1,6 +1,7 @@
-import { Component, setIcon } from "obsidian";
+import { Component, setIcon, moment } from "obsidian";
 import { Task } from "../../utils/types/TaskIndex";
 import { t } from "../../translations/helper";
+import TaskProgressBarPlugin from "src";
 
 export interface CalendarDay {
 	date: Date;
@@ -14,7 +15,6 @@ export interface CalendarDay {
 
 export interface CalendarOptions {
 	showWeekends: boolean;
-	firstDayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
 	showTaskCounts: boolean;
 }
 
@@ -35,7 +35,6 @@ export class CalendarComponent extends Component {
 	private tasks: Task[] = [];
 	private options: CalendarOptions = {
 		showWeekends: true,
-		firstDayOfWeek: 0,
 		showTaskCounts: true,
 	};
 
@@ -43,7 +42,7 @@ export class CalendarComponent extends Component {
 	public onDateSelected: (date: Date, tasks: Task[]) => void;
 	public onMonthChanged: (month: number, year: number) => void;
 
-	constructor(private parentEl: HTMLElement) {
+	constructor(private parentEl: HTMLElement, private plugin: TaskProgressBarPlugin) {
 		super();
 		this.displayedMonth = this.currentDate.getMonth();
 		this.displayedYear = this.currentDate.getFullYear();
@@ -65,6 +64,13 @@ export class CalendarComponent extends Component {
 
 		// Generate initial calendar
 		this.generateCalendar();
+
+		// Register for settings changes
+		this.registerEvent(
+			this.plugin.app.workspace.on('layout-change', () => {
+				this.generateCalendar();
+			})
+		);
 	}
 
 	private createCalendarHeader() {
@@ -130,9 +136,12 @@ export class CalendarComponent extends Component {
 		const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 		const sortedDayNames = [...dayNames];
 
+		// Get current first day of week setting
+		const firstDayOfWeek = this.plugin.settings.firstDayOfWeek ?? moment.localeData().firstDayOfWeek();
+
 		// Adjust for first day of week setting
-		if (this.options.firstDayOfWeek > 0) {
-			for (let i = 0; i < this.options.firstDayOfWeek; i++) {
+		if (firstDayOfWeek > 0) {
+			for (let i = 0; i < firstDayOfWeek; i++) {
 				sortedDayNames.push(sortedDayNames.shift()!);
 			}
 		}
@@ -159,7 +168,7 @@ export class CalendarComponent extends Component {
 			this.displayedMonth,
 			1
 		);
-		let startDay = firstDayOfMonth.getDay() - this.options.firstDayOfWeek;
+		let startDay = firstDayOfMonth.getDay() - firstDayOfWeek;
 		if (startDay < 0) startDay += 7;
 
 		// Calculate number of days in month

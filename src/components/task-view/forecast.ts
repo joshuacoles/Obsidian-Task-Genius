@@ -268,7 +268,8 @@ export class ForecastComponent extends Component {
 
 		// Create and initialize calendar component
 		this.calendarComponent = new CalendarComponent(
-			this.calendarContainerEl
+			this.calendarContainerEl,
+			this.plugin
 		);
 		this.addChild(this.calendarComponent);
 		this.calendarComponent.load();

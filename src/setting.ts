@@ -1653,6 +1653,34 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	}
 
 	private displayDatePrioritySettings(containerEl: HTMLElement): void {
+		// Date & Priority Settings
+		new Setting(containerEl)
+			.setName(t("Calendar Settings"))
+			.setDesc(t("Configure date-related settings for calendar views"))
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName(t("First day of week"))
+			.setDesc(t("Set the first day of the week for date pickers and calendars"))
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("-1", t("Locale Default"))
+					.addOption("0", t("Sunday"))
+					.addOption("1", t("Monday"))
+					.addOption("2", t("Tuesday"))
+					.addOption("3", t("Wednesday"))
+					.addOption("4", t("Thursday"))
+					.addOption("5", t("Friday"))
+					.addOption("6", t("Saturday"));
+
+				dropdown.setValue(String(this.plugin.settings.firstDayOfWeek || -1));
+				dropdown.onChange(async (value) => {
+					const numValue = parseInt(value);
+					this.plugin.settings.firstDayOfWeek = numValue === -1 ? undefined : numValue;
+					this.applySettingsUpdate();
+				});
+			});
+
 		// Priority picker settings
 		new Setting(containerEl)
 			.setName(t("Priority Picker Settings"))
