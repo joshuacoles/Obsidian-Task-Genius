@@ -18,6 +18,7 @@ import {
 	ViewConfig,
 	ViewFilterRule,
 	ViewMode,
+	ForecastSpecificConfig,
 } from "../common/setting-definition";
 import TaskProgressBarPlugin from "../index";
 import { FolderSuggest } from "./AutoComplete";
@@ -106,43 +107,43 @@ export class ViewConfigModal extends Modal {
 				value: 0,
 				name: new Intl.DateTimeFormat(window.navigator.language, {
 					weekday: "long",
-				}).format(new Date(2024, 0, 1)),
+				}).format(new Date(2024, 0, 7)),
 			}, // Monday
 			{
 				value: 1,
 				name: new Intl.DateTimeFormat(window.navigator.language, {
 					weekday: "long",
-				}).format(new Date(2024, 0, 2)),
+				}).format(new Date(2024, 0, 1)),
 			}, // Tuesday
 			{
 				value: 2,
 				name: new Intl.DateTimeFormat(window.navigator.language, {
 					weekday: "long",
-				}).format(new Date(2024, 0, 3)),
+				}).format(new Date(2024, 0, 2)),
 			}, // Wednesday
 			{
 				value: 3,
 				name: new Intl.DateTimeFormat(window.navigator.language, {
 					weekday: "long",
-				}).format(new Date(2024, 0, 4)),
+				}).format(new Date(2024, 0, 3)),
 			}, // Thursday
 			{
 				value: 4,
 				name: new Intl.DateTimeFormat(window.navigator.language, {
 					weekday: "long",
-				}).format(new Date(2024, 0, 5)),
+				}).format(new Date(2024, 0, 4)),
 			}, // Friday
 			{
 				value: 5,
 				name: new Intl.DateTimeFormat(window.navigator.language, {
 					weekday: "long",
-				}).format(new Date(2024, 0, 6)),
+				}).format(new Date(2024, 0, 5)),
 			}, // Saturday
 			{
 				value: 6,
 				name: new Intl.DateTimeFormat(window.navigator.language, {
 					weekday: "long",
-				}).format(new Date(2024, 0, 7)),
+				}).format(new Date(2024, 0, 6)),
 			}, // Sunday
 		];
 
@@ -263,6 +264,50 @@ export class ViewConfigModal extends Modal {
 								this.viewConfig
 									.specificConfig as KanbanSpecificConfig
 							).showCheckbox = value;
+						}
+						this.checkForChanges();
+					});
+				});
+		} else if (this.viewConfig.id === "forecast") {
+			new Setting(contentEl)
+				.setName(t("First day of week"))
+				.setDesc(t("Overrides the locale default for forecast views."))
+				.addDropdown((dropdown) => {
+					days.forEach((day) => {
+						dropdown.addOption(String(day.value), day.name);
+					});
+
+					let initialValue = -1; // Default to 'Locale Default'
+					if (
+						this.viewConfig.specificConfig?.viewType === "forecast"
+					) {
+						initialValue =
+							(
+								this.viewConfig
+									.specificConfig as ForecastSpecificConfig
+							).firstDayOfWeek ?? -1;
+					}
+					dropdown.setValue(String(initialValue));
+
+					dropdown.onChange((value) => {
+						const numValue = parseInt(value);
+						const newFirstDayOfWeek =
+							numValue === -1 ? undefined : numValue;
+
+						if (
+							!this.viewConfig.specificConfig ||
+							this.viewConfig.specificConfig.viewType !==
+								"forecast"
+						) {
+							this.viewConfig.specificConfig = {
+								viewType: "forecast",
+								firstDayOfWeek: newFirstDayOfWeek,
+							};
+						} else {
+							(
+								this.viewConfig
+									.specificConfig as ForecastSpecificConfig
+							).firstDayOfWeek = newFirstDayOfWeek;
 						}
 						this.checkForChanges();
 					});

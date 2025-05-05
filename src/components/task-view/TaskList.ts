@@ -44,14 +44,6 @@ export class TaskListRendererComponent extends Component {
 		emptyMessage: string = t("No tasks found."),
 		append: boolean = false
 	) {
-		console.log(
-			"renderTasks",
-			tasks,
-			isTreeView,
-			allTasksMap,
-			emptyMessage,
-			append
-		);
 		if (!append) {
 			this.cleanupComponents();
 			this.containerEl.empty();

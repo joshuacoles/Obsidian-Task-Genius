@@ -34,6 +34,7 @@ export class CalendarComponent extends Component {
 	private displayedYear: number;
 	private calendarDays: CalendarDay[] = [];
 	private tasks: Task[] = [];
+
 	private options: CalendarOptions = {
 		showWeekends: true,
 		firstDayOfWeek: 0,
@@ -44,10 +45,14 @@ export class CalendarComponent extends Component {
 	public onDateSelected: (date: Date, tasks: Task[]) => void;
 	public onMonthChanged: (month: number, year: number) => void;
 
-	constructor(private parentEl: HTMLElement) {
+	constructor(
+		private parentEl: HTMLElement,
+		private config: Partial<CalendarOptions> = {}
+	) {
 		super();
 		this.displayedMonth = this.currentDate.getMonth();
 		this.displayedYear = this.currentDate.getFullYear();
+		this.options = { ...this.options, ...this.config };
 	}
 
 	onload() {

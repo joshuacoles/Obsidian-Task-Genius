@@ -84,6 +84,11 @@ export interface GanttSpecificConfig {
 	useMarkdownRenderer: boolean;
 }
 
+export interface ForecastSpecificConfig {
+	viewType: "forecast"; // Discriminator
+	firstDayOfWeek?: number; // 0=Sun, 1=Mon, ..., 6=Sat; undefined=locale default
+}
+
 export interface TwoColumnSpecificConfig {
 	viewType: "twocolumn"; // Discriminator
 	taskPropertyKey: string; // Task property to use as the left column grouping (e.g., "tags", "project", "priority", "context")
@@ -98,7 +103,8 @@ export type SpecificViewConfig =
 	| KanbanSpecificConfig
 	| CalendarSpecificConfig
 	| GanttSpecificConfig
-	| TwoColumnSpecificConfig;
+	| TwoColumnSpecificConfig
+	| ForecastSpecificConfig;
 
 /** Define the structure for task statuses */
 export interface TaskStatusConfig extends Record<string, string> {

@@ -14,6 +14,7 @@ import "../../styles/calendar.css";
 import { TaskTreeItemComponent } from "./treeItem";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
+import { ForecastSpecificConfig } from "../../common/setting-definition";
 
 interface DateSection {
 	title: string;
@@ -268,7 +269,10 @@ export class ForecastComponent extends Component {
 
 		// Create and initialize calendar component
 		this.calendarComponent = new CalendarComponent(
-			this.calendarContainerEl
+			this.calendarContainerEl,
+			this.plugin.settings.viewConfiguration.find(
+				(view) => view.id === "forecast"
+			)?.specificConfig as ForecastSpecificConfig
 		);
 		this.addChild(this.calendarComponent);
 		this.calendarComponent.load();
