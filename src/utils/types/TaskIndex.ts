@@ -55,6 +55,9 @@ export interface Task {
 
 	/** File statistics and metadata for auto-date extraction */
 	useAsDateType?: "due" | "start" | "scheduled";
+
+	/** Task belongs to which heading */
+	heading?: string[];
 }
 
 /** High-performance cache structure for tasks */

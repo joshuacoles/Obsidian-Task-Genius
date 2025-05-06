@@ -313,6 +313,12 @@ export interface TaskProgressBarSettings {
 	// Date Settings
 	useRelativeTimeForDate: boolean;
 
+	// Ignore all tasks behind heading
+	ignoreHeading: string;
+
+	// Focus all tasks behind heading
+	focusHeading: string;
+
 	// View Settings (Updated Structure)
 	enableView: boolean;
 	viewConfiguration: ViewConfig[]; // Manages order, visibility, basic info, AND filter rules
@@ -500,6 +506,13 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 
 	// Date Settings
 	useRelativeTimeForDate: false,
+
+	// Ignore all tasks behind heading
+	ignoreHeading: "",
+
+	// Focus all tasks behind heading
+	focusHeading: "",
+
 	// View Defaults (Updated Structure)
 	enableView: true,
 	viewConfiguration: [

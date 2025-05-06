@@ -42,6 +42,8 @@ export interface WorkerPoolOptions {
 		dailyNoteFormat: string;
 		useAsDateType: "due" | "start" | "scheduled";
 		dailyNotePath: string;
+		ignoreHeading: string;
+		focusHeading: string;
 	};
 }
 
@@ -58,6 +60,8 @@ export const DEFAULT_WORKER_OPTIONS: WorkerPoolOptions = {
 		dailyNoteFormat: "yyyy-MM-dd",
 		useAsDateType: "due",
 		dailyNotePath: "",
+		ignoreHeading: "",
+		focusHeading: "",
 	},
 };
 
@@ -455,6 +459,8 @@ export class TaskWorkerManager extends Component {
 							dailyNoteFormat: "yyyy-MM-dd",
 							useAsDateType: "due",
 							dailyNotePath: "",
+							ignoreHeading: "",
+							focusHeading: "",
 						},
 					};
 

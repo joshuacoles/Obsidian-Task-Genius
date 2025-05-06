@@ -4,6 +4,7 @@
 
 import { CachedMetadata, FileStats, ListItemCache } from "obsidian";
 import { Task } from "../types/TaskIndex";
+import { MetadataFormat } from "../taskUtil";
 
 /**
  * Command to parse tasks from a file
@@ -31,6 +32,8 @@ export interface ParseTasksCommand {
 		dailyNoteFormat: string;
 		useAsDateType: "due" | "start" | "scheduled";
 		dailyNotePath: string;
+		ignoreHeading: string;
+		focusHeading: string;
 	};
 }
 
@@ -61,6 +64,8 @@ export interface BatchIndexCommand {
 		dailyNoteFormat: string;
 		useAsDateType: "due" | "start" | "scheduled";
 		dailyNotePath: string;
+		ignoreHeading: string;
+		focusHeading: string;
 	};
 }
 
@@ -130,3 +135,17 @@ export interface ErrorResult {
  * All possible results from the worker
  */
 export type IndexerResult = TaskParseResult | BatchIndexResult | ErrorResult;
+
+/**
+ * Custom settings for the task worker
+ */
+
+export type TaskWorkerSettings = {
+	preferMetadataFormat: MetadataFormat;
+	useDailyNotePathAsDate: boolean;
+	dailyNoteFormat: string;
+	useAsDateType: "due" | "start" | "scheduled";
+	dailyNotePath: string;
+	ignoreHeading: string;
+	focusHeading: string;
+};

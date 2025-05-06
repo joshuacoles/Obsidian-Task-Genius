@@ -2937,6 +2937,36 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				});
 			});
 
+		new Setting(containerEl)
+			.setName(t("Ignore all tasks behind heading"))
+			.setDesc(
+				t(
+					"Enter the heading to ignore, e.g. '## Project', '## Inbox', separated by comma"
+				)
+			)
+			.addText((text) => {
+				text.setValue(this.plugin.settings.ignoreHeading);
+				text.onChange((value) => {
+					this.plugin.settings.ignoreHeading = value;
+					this.applySettingsUpdate();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName(t("Focus all tasks behind heading"))
+			.setDesc(
+				t(
+					"Enter the heading to focus, e.g. '## Project', '## Inbox', separated by comma"
+				)
+			)
+			.addText((text) => {
+				text.setValue(this.plugin.settings.focusHeading);
+				text.onChange((value) => {
+					this.plugin.settings.focusHeading = value;
+					this.applySettingsUpdate();
+				});
+			});
+
 		if (!this.plugin.settings.enableView) return;
 
 		// --- New View Management Section ---
@@ -3201,9 +3231,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			.setDesc(t("View the documentation for this plugin"))
 			.addButton((button) => {
 				button.setButtonText(t("Open Documentation")).onClick(() => {
-					window.open(
-						"https://github.com/quorafind/obsidian-task-genius/"
-					);
+					window.open("https://taskgenius.md/docs");
 				});
 			});
 	}

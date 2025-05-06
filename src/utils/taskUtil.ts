@@ -452,6 +452,7 @@ export function parseTaskLine(
 		recurrence: undefined,
 		project: undefined,
 		context: undefined,
+		heading: [],
 	};
 
 	// Extract metadata in order
