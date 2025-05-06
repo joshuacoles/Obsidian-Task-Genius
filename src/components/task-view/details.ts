@@ -314,7 +314,9 @@ export class TaskDetailsComponent extends Component {
 		tagsInput.setValue(task.tags ? task.tags.join(", ") : "");
 		tagsField
 			.createSpan({ cls: "field-description" })
-			.setText(t("Comma separated"));
+			.setText(
+				t("Comma separated") + " " + t("e.g. #tag1, #tag2, #tag3")
+			);
 
 		new TagSuggest(this.app, tagsInput.inputEl, this.plugin);
 
