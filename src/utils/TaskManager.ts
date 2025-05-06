@@ -1328,7 +1328,7 @@ export class TaskManager extends Component {
 		indentation: string
 	): string {
 		// Calculate the next due date based on the recurrence pattern
-		const nextDueDate = this.calculateNextDueDate(completedTask);
+		const nextDate = this.calculateNextDueDate(completedTask);
 
 		// Create a new task with the same content but updated dates
 		const newTask = { ...completedTask };
@@ -1337,21 +1337,29 @@ export class TaskManager extends Component {
 		newTask.completed = false;
 		newTask.completedDate = undefined;
 
-		// Update due date
-		newTask.dueDate = nextDueDate;
+		// Determine where to apply the next date based on what the original task had
+		if (completedTask.dueDate) {
+			// If original task had due date, update due date
+			newTask.dueDate = nextDate;
+		} else if (completedTask.scheduledDate) {
+			// If original task only had scheduled date, update scheduled date
+			newTask.scheduledDate = nextDate;
+			newTask.dueDate = undefined; // Make sure due date is not set
+		}
 
 		// Format dates for task markdown
-		const formattedDueDate = nextDueDate
-			? this.formatDateForDisplay(nextDueDate)
+		const formattedDueDate = newTask.dueDate
+			? this.formatDateForDisplay(newTask.dueDate)
+			: undefined;
+
+		// For scheduled date, use the new calculated date if that's what was updated
+		const formattedScheduledDate = newTask.scheduledDate
+			? this.formatDateForDisplay(newTask.scheduledDate)
 			: undefined;
 
 		// For other dates, copy the original ones if they exist
 		const formattedStartDate = completedTask.startDate
 			? this.formatDateForDisplay(completedTask.startDate)
-			: undefined;
-
-		const formattedScheduledDate = completedTask.scheduledDate
-			? this.formatDateForDisplay(completedTask.scheduledDate)
 			: undefined;
 
 		// Extract the original list marker (-, *, 1., etc.) from the original markdown
@@ -1551,8 +1559,12 @@ export class TaskManager extends Component {
 
 		console.log(task);
 
-		// Start with current due date or today if no due date
-		const baseDate = task.dueDate ? new Date(task.dueDate) : new Date();
+		// Start with due date if available, then scheduled date, then today
+		const baseDate = task.dueDate
+			? new Date(task.dueDate)
+			: task.scheduledDate
+			? new Date(task.scheduledDate)
+			: new Date();
 		// Ensure baseDate is at the beginning of the day for date-based recurrence
 		baseDate.setHours(0, 0, 0, 0);
 
@@ -1725,20 +1737,20 @@ export class TaskManager extends Component {
 			);
 			return nextDate.getTime();
 		} catch (error) {
-			console.error("Error calculating next due date:", error);
+			console.error("Error calculating next date:", error);
 			// Default fallback: add one day to baseDate
 			const fallbackDate = new Date(baseDate);
 			fallbackDate.setDate(fallbackDate.getDate() + 1);
 			fallbackDate.setHours(0, 0, 0, 0);
 			if (task.recurrence) {
 				this.log(
-					`Error calculating next due date for '${
+					`Error calculating next date for '${
 						task.recurrence
 					}'. Defaulting to ${fallbackDate.toISOString()}`
 				);
 			} else {
 				this.log(
-					`Error calculating next due date for task without recurrence. Defaulting to ${fallbackDate.toISOString()}`
+					`Error calculating next date for task without recurrence. Defaulting to ${fallbackDate.toISOString()}`
 				);
 			}
 			return fallbackDate.getTime();

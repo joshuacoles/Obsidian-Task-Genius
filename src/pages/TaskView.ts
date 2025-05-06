@@ -670,7 +670,8 @@ export class TaskView extends ItemView {
 			targetComponent.containerEl.show();
 			if (typeof targetComponent.setTasks === "function") {
 				targetComponent.setTasks(
-					filterTasks(this.tasks, viewId, this.plugin)
+					filterTasks(this.tasks, viewId, this.plugin),
+					this.tasks
 				);
 			}
 

@@ -23,6 +23,7 @@ export class ContentComponent extends Component {
 
 	// Task data
 	private allTasks: Task[] = [];
+	private notFilteredTasks: Task[] = [];
 	private filteredTasks: Task[] = []; // Tasks after filters applied
 	private selectedTask: Task | null = null;
 
@@ -145,8 +146,9 @@ export class ContentComponent extends Component {
 		this.refreshTaskList(); // Refresh list completely on view mode change
 	}
 
-	public setTasks(tasks: Task[]) {
+	public setTasks(tasks: Task[], notFilteredTasks: Task[]) {
 		this.allTasks = tasks;
+		this.notFilteredTasks = notFilteredTasks;
 		this.applyFilters();
 		this.refreshTaskList();
 	}
