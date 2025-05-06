@@ -4,7 +4,8 @@ import { TaskListItemComponent } from "./listItem"; // Re-import needed componen
 import {
 	ViewMode,
 	getViewSettingOrDefault,
-} from "../../common/setting-definition"; // Import ViewMode
+	SortCriterion,
+} from "../../common/setting-definition"; // 导入 SortCriterion
 import { tasksToTree } from "../../utils/treeViewUtil"; // Re-import needed utils
 import { TaskTreeItemComponent } from "./treeItem"; // Re-import needed components
 import { t } from "../../translations/helper";
@@ -12,6 +13,7 @@ import TaskProgressBarPlugin from "../../index";
 
 // @ts-ignore
 import { filterTasks } from "../../utils/TaskFilterUtils";
+import { sortTasks } from "../../commands/sortTaskCommands"; // 导入 sortTasks 函数
 
 export class ContentComponent extends Component {
 	public containerEl: HTMLElement;
@@ -182,19 +184,30 @@ export class ContentComponent extends Component {
 			{ textQuery: this.filterInput?.value } // Pass text query from input
 		);
 
-		// --- Apply Sorting --- (Keep sorting within the component)
-		this.filteredTasks.sort((a, b) => {
-			const completedA = a.completed;
-			const completedB = b.completed;
-			if (completedA !== completedB) return completedA ? 1 : -1;
-			const prioA = a.priority ?? 0;
-			const prioB = b.priority ?? 0;
-			if (prioA !== prioB) return prioB - prioA;
-			const dueA = a.dueDate ?? Infinity;
-			const dueB = b.dueDate ?? Infinity;
-			if (dueA !== dueB) return dueA - dueB;
-			return a.content.localeCompare(b.content);
-		});
+		const sortCriteria = this.plugin.settings.viewConfiguration.find(
+			(view) => view.id === this.currentViewId
+		)?.sortCriteria;
+
+		if (sortCriteria && sortCriteria.length > 0) {
+			this.filteredTasks = sortTasks(
+				this.filteredTasks,
+				sortCriteria,
+				this.plugin.settings
+			);
+		} else {
+			this.filteredTasks.sort((a, b) => {
+				const completedA = a.completed;
+				const completedB = b.completed;
+				if (completedA !== completedB) return completedA ? 1 : -1;
+				const prioA = a.priority ?? 0;
+				const prioB = b.priority ?? 0;
+				if (prioA !== prioB) return prioB - prioA;
+				const dueA = a.dueDate ?? Infinity;
+				const dueB = b.dueDate ?? Infinity;
+				if (dueA !== dueB) return dueA - dueB;
+				return a.content.localeCompare(b.content);
+			});
+		}
 
 		// Update the task count display
 		this.countEl.setText(`${this.filteredTasks.length} ${t("tasks")}`);

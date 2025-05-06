@@ -261,114 +261,160 @@ function getDynamicStatusOrder(settings: TaskProgressBarSettings): {
 }
 
 // Compares two tasks based on the given criteria AND plugin settings
-function compareTasks(
-	taskA: SortableTask,
-	taskB: SortableTask,
+function compareTasks<
+	T extends {
+		calculatedStatus?: string | SortableTaskStatus;
+		status?: string;
+		completed?: boolean;
+		priority?: number;
+		dueDate?: number;
+		startDate?: number;
+		scheduledDate?: number;
+		content?: string;
+		lineNumber?: number;
+	}
+>(
+	taskA: T,
+	taskB: T,
 	criteria: SortCriterion[],
-	settings: TaskProgressBarSettings // Pass settings here
+	statusOrder: { [key: string]: number }
 ): number {
-	// Generate status order dynamically for this comparison run
-	const statusOrder = getDynamicStatusOrder(settings);
-
 	// First, completed tasks always come last
 	if (taskA.completed !== taskB.completed) {
 		return taskA.completed ? 1 : -1;
 	}
 
-	// If both are completed or both incomplete, sort by original criteria
-	for (const criterion of criteria) {
-		let valA: any;
-		let valB: any;
-		let comparison = 0;
+	// 初始化Collator用于文本排序优化
+	const sortCollator = new Intl.Collator(undefined, {
+		usage: "sort",
+		sensitivity: "base", // 不区分大小写
+		numeric: true, // 智能处理数字
+	});
 
-		switch (criterion.field) {
-			case "status":
-				// Status comparison logic (relies on statusOrder having numbers)
-				valA = statusOrder[taskA.calculatedStatus] ?? 1000; // Assign a high number for unknown statuses
-				valB = statusOrder[taskB.calculatedStatus] ?? 1000;
-				if (typeof valA === "number" && typeof valB === "number") {
-					comparison = valA - valB; // Lower number means higher rank in status order
-				} else {
-					// Fallback if statusOrder contains non-numbers (shouldn't happen ideally)
-					console.warn(
-						`Non-numeric status order values detected: ${valA}, ${valB}`
-					);
-					comparison = 0; // Treat as equal if non-numeric
-				}
-				break;
-			case "priority":
-				// Assuming numerical mapping where HIGHER number means HIGHER priority (e.g., High=3, Medium=2, Low=1)
-				valA = taskA.priority; // Use undefined/null directly
-				valB = taskB.priority;
-				const aHasPriority = valA !== undefined && valA !== null;
-				const bHasPriority = valB !== undefined && valB !== null;
+	// 创建排序工厂对象
+	const sortFactory = {
+		status: (a: T, b: T, order: "asc" | "desc") => {
+			// Status comparison logic (relies on statusOrder having numbers)
+			// 使用calculatedStatus优先，如果没有则使用status
+			const statusA = a.calculatedStatus || a.status || "";
+			const statusB = b.calculatedStatus || b.status || "";
 
-				if (!aHasPriority && !bHasPriority) {
-					comparison = 0; // Both lack priority
-				} else if (!aHasPriority) {
-					// A lacks priority. 'asc' means High->Low->None. None is last (+1).
-					comparison = 1;
-				} else if (!bHasPriority) {
-					// B lacks priority. 'asc' means High->Low->None. None is last. B is last, so A is first (-1).
-					comparison = -1;
-				} else {
-					// Both have numeric priorities.
-					// Compare numerically: A - B.
-					// Example: High(3) vs Low(1) => comparison = 3 - 1 = 2
-					comparison = valA - valB;
-				}
-				// Direction adjustment is handled after the switch
-				break;
-			case "dueDate":
-			case "startDate":
-			case "scheduledDate":
-				valA = taskA[criterion.field]; // Use undefined/null directly
-				valB = taskB[criterion.field];
-				const aHasDate = valA !== undefined && valA !== null;
-				const bHasDate = valB !== undefined && valB !== null;
+			const valA = statusOrder[statusA] ?? 1000; // Assign a high number for unknown statuses
+			const valB = statusOrder[statusB] ?? 1000;
 
-				if (!aHasDate && !bHasDate) {
-					comparison = 0; // Both lack date
-				} else if (!aHasDate) {
-					// A lacks date. 'asc' means Dates->None. None is last (+1).
-					comparison = 1;
-				} else if (!bHasDate) {
-					// B lacks date. 'asc' means Dates->None. None is last. B is last, so A is first (-1).
-					comparison = -1;
-				} else {
-					// Both have numeric dates (timestamps)
-					// Compare numerically: A - B. Earlier date first.
-					comparison = valA - valB;
-				}
-				// Direction adjustment is handled after the switch
-				break;
-			case "content":
-				valA = taskA.content.toLowerCase();
-				valB = taskB.content.toLowerCase();
-				comparison = valA.localeCompare(valB);
-				// Direction adjustment is handled after the switch
-				break;
-		} // End switch
-
-		// Apply sort order direction (asc/desc)
-		if (comparison !== 0) {
-			// Special handling for priority: 'asc' means HIGHER numeric value first.
-			if (criterion.field === "priority") {
-				// If 'asc' (High first), comparison = A - B. High(3) - Low(1) = 2. We need negative result -> return -comparison.
-				// If 'desc' (Low first), comparison = A - B. High(3) - Low(1) = 2. We need positive result -> return comparison.
-				return criterion.order === "asc" ? -comparison : comparison;
+			if (typeof valA === "number" && typeof valB === "number") {
+				const comparison = valA - valB; // Lower number means higher rank in status order
+				return order === "asc" ? comparison : -comparison;
 			} else {
-				// For other fields (status, dates, content): 'asc' means LOWER numeric/alphabetic value first.
-				// Comparison = A - B or localeCompare(A, B).
-				// If 'asc', a negative comparison means A is first -> return comparison.
-				// If 'desc', flip the sign -> return -comparison.
-				return criterion.order === "asc" ? comparison : -comparison;
+				// Fallback if statusOrder contains non-numbers (shouldn't happen ideally)
+				console.warn(
+					`Non-numeric status order values detected: ${valA}, ${valB}`
+				);
+				return 0; // Treat as equal if non-numeric
 			}
-		} // End if comparison !== 0
-	} // End for loop
+		},
+
+		priority: (a: T, b: T, order: "asc" | "desc") => {
+			// Assuming numerical mapping where HIGHER number means HIGHER priority (e.g., High=3, Medium=2, Low=1)
+			const valA = a.priority; // Use undefined/null directly
+			const valB = b.priority;
+			const aHasPriority = valA !== undefined && valA !== null;
+			const bHasPriority = valB !== undefined && valB !== null;
+
+			let comparison = 0;
+			if (!aHasPriority && !bHasPriority) {
+				comparison = 0; // Both lack priority
+			} else if (!aHasPriority) {
+				// A lacks priority. 'asc' means High->Low->None. None is last (+1).
+				comparison = 1;
+			} else if (!bHasPriority) {
+				// B lacks priority. 'asc' means High->Low->None. None is last. B is last, so A is first (-1).
+				comparison = -1;
+			} else {
+				// Both have numeric priorities.
+				// Compare numerically: A - B.
+				// Example: High(3) vs Low(1) => comparison = 3 - 1 = 2
+				comparison = valA - valB;
+			}
+
+			// Special handling for priority: 'asc' means HIGHER numeric value first
+			// If 'asc' (High first), comparison = A - B. High(3) - Low(1) = 2. We need negative result.
+			// If 'desc' (Low first), comparison = A - B. High(3) - Low(1) = 2. We need positive result.
+			return order === "asc" ? -comparison : comparison;
+		},
+
+		dueDate: (a: T, b: T, order: "asc" | "desc") => {
+			return sortByDate("dueDate", a, b, order);
+		},
+
+		startDate: (a: T, b: T, order: "asc" | "desc") => {
+			return sortByDate("startDate", a, b, order);
+		},
+
+		scheduledDate: (a: T, b: T, order: "asc" | "desc") => {
+			return sortByDate("scheduledDate", a, b, order);
+		},
+
+		content: (a: T, b: T, order: "asc" | "desc") => {
+			// 使用Collator进行更智能的文本比较，代替简单的localeCompare
+			// 首先检查content是否存在
+			if (!a.content && !b.content) return 0;
+			if (!a.content) return order === "asc" ? 1 : -1;
+			if (!b.content) return order === "asc" ? -1 : 1;
+
+			const comparison = sortCollator.compare(a.content, b.content);
+			return order === "asc" ? comparison : -comparison;
+		},
+	};
+
+	// 通用日期排序函数
+	function sortByDate(
+		field: "dueDate" | "startDate" | "scheduledDate",
+		a: T,
+		b: T,
+		order: "asc" | "desc"
+	): number {
+		const valA = a[field]; // Use undefined/null directly
+		const valB = b[field];
+		const aHasDate = valA !== undefined && valA !== null;
+		const bHasDate = valB !== undefined && valB !== null;
+
+		let comparison = 0;
+		if (!aHasDate && !bHasDate) {
+			comparison = 0; // Both lack date
+		} else if (!aHasDate) {
+			// A lacks date. 'asc' means Dates->None. None is last (+1).
+			comparison = 1;
+		} else if (!bHasDate) {
+			// B lacks date. 'asc' means Dates->None. None is last. B is last, so A is first (-1).
+			comparison = -1;
+		} else {
+			// Both have numeric dates (timestamps)
+			// Compare numerically: A - B. Earlier date first.
+			comparison = ((valA as number) - valB) as number;
+		}
+
+		return order === "asc" ? comparison : -comparison;
+	}
+
+	// 使用工厂方法进行排序
+	for (const criterion of criteria) {
+		if (criterion.field in sortFactory) {
+			const sortMethod =
+				sortFactory[criterion.field as keyof typeof sortFactory];
+			const result = sortMethod(taskA, taskB, criterion.order);
+			if (result !== 0) {
+				return result;
+			}
+		}
+	}
 
 	// Maintain original relative order if all criteria are equal
-	return taskA.lineNumber - taskB.lineNumber;
+	// 检查是否有lineNumber属性
+	if (taskA.lineNumber !== undefined && taskB.lineNumber !== undefined) {
+		return taskA.lineNumber - taskB.lineNumber;
+	}
+	return 0;
 }
 
 // Find continuous task blocks (including subtasks)
@@ -424,14 +470,52 @@ export function findContinuousTaskBlocks(
 	return blocks;
 }
 
+// Generic sorting function that accepts any task object that matches the specific conditions
+export function sortTasks<
+	T extends {
+		calculatedStatus?: string | SortableTaskStatus;
+		status?: string;
+		completed?: boolean;
+		priority?: number;
+		dueDate?: number;
+		startDate?: number;
+		scheduledDate?: number;
+		content?: string;
+		lineNumber?: number;
+		children?: any[]; // Accept any children type
+	}
+>(
+	tasks: T[],
+	criteria: SortCriterion[],
+	settings: TaskProgressBarSettings
+): T[] {
+	const statusOrder = getDynamicStatusOrder(settings);
+
+	// Handle special case: if tasks are Task type, add calculatedStatus property to each task
+	const preparedTasks = tasks.map((task) => {
+		// If already has calculatedStatus, skip
+		if (task.calculatedStatus) return task;
+
+		// Otherwise, add calculatedStatus
+		return {
+			...task,
+			calculatedStatus: task.status || "",
+		};
+	});
+
+	preparedTasks.sort((a, b) => compareTasks(a, b, criteria, statusOrder));
+	return preparedTasks as T[]; // 类型断言回原类型
+}
+
 // Recursively sort tasks and their subtasks
 function sortTasksRecursively(
 	tasks: SortableTask[],
 	criteria: SortCriterion[],
 	settings: TaskProgressBarSettings
 ): SortableTask[] {
+	const statusOrder = getDynamicStatusOrder(settings);
 	// Sort tasks at the current level
-	tasks.sort((a, b) => compareTasks(a, b, criteria, settings));
+	tasks.sort((a, b) => compareTasks(a, b, criteria, statusOrder));
 
 	// Recursively sort each task's subtasks
 	for (const task of tasks) {
@@ -575,8 +659,6 @@ export function sortTasksInDocument(
 			settings
 		);
 	}
-
-	console.log("taskBlocks", taskBlocks);
 
 	// 3. Update the original blockTasks to reflect sorting results
 	// Clear the original blockTasks

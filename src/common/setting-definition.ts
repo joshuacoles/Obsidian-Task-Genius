@@ -67,6 +67,7 @@ export interface ViewConfig {
 	hideCompletedAndAbandonedTasks: boolean; // Per-view setting
 	filterBlanks: boolean; // Per-view setting
 	filterRules?: ViewFilterRule; // ADDED: Optional filter rules for ALL views
+	sortCriteria?: SortCriterion[]; // ADDED: Optional sort criteria for ALL views
 	specificConfig?: SpecificViewConfig; // ADDED: Optional property for view-specific settings
 }
 

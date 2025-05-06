@@ -15,6 +15,7 @@ import { TaskTreeItemComponent } from "./treeItem";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
 import { ForecastSpecificConfig } from "../../common/setting-definition";
+import { sortTasks } from "../../commands/sortTaskCommands"; // 导入 sortTasks 函数
 
 interface DateSection {
 	title: string;
@@ -422,6 +423,10 @@ export class ForecastComponent extends Component {
 		today.setHours(0, 0, 0, 0);
 		const todayTimestamp = today.getTime();
 
+		const sortCriteria = this.plugin.settings.viewConfiguration.find(
+			(view) => view.id === "forecast"
+		)?.sortCriteria;
+
 		// Filter for incomplete tasks with a relevant date
 		const tasksWithRelevantDate = this.allTasks.filter(
 			(task) => this.getRelevantDate(task) !== undefined
@@ -441,33 +446,61 @@ export class ForecastComponent extends Component {
 			return relevantTimestamp > todayTimestamp;
 		});
 
-		// Sort tasks by priority and then relevant date
-		const sortTasksByPriorityAndRelevantDate = (tasks: Task[]) => {
-			return tasks.sort((a, b) => {
-				// First by priority (high to low)
-				const priorityA = a.priority || 0;
-				const priorityB = b.priority || 0;
-				if (priorityA !== priorityB) {
-					return priorityB - priorityA;
-				}
+		// Use sortTasks to sort tasks
+		if (sortCriteria && sortCriteria.length > 0) {
+			this.pastTasks = sortTasks(
+				this.pastTasks,
+				sortCriteria,
+				this.plugin.settings
+			);
+			this.todayTasks = sortTasks(
+				this.todayTasks,
+				sortCriteria,
+				this.plugin.settings
+			);
+			this.futureTasks = sortTasks(
+				this.futureTasks,
+				sortCriteria,
+				this.plugin.settings
+			);
+		} else {
+			// 如果未启用排序设置，使用默认的优先级和日期排序
+			this.pastTasks = this.sortTasksByPriorityAndRelevantDate(
+				this.pastTasks
+			);
+			this.todayTasks = this.sortTasksByPriorityAndRelevantDate(
+				this.todayTasks
+			);
+			this.futureTasks = this.sortTasksByPriorityAndRelevantDate(
+				this.futureTasks
+			);
+		}
+	}
 
-				// Then by relevant date (early to late)
-				// Ensure dates exist before comparison
-				const relevantDateA = this.getRelevantDate(a);
-				const relevantDateB = this.getRelevantDate(b);
+	/**
+	 * 按优先级和相关日期排序任务
+	 */
+	private sortTasksByPriorityAndRelevantDate(tasks: Task[]): Task[] {
+		return tasks.sort((a, b) => {
+			// First by priority (high to low)
+			const priorityA = a.priority || 0;
+			const priorityB = b.priority || 0;
+			if (priorityA !== priorityB) {
+				return priorityB - priorityA;
+			}
 
-				if (relevantDateA === undefined && relevantDateB === undefined)
-					return 0;
-				if (relevantDateA === undefined) return 1; // Place tasks without dates later
-				if (relevantDateB === undefined) return -1; // Place tasks without dates later
+			// Then by relevant date (early to late)
+			// Ensure dates exist before comparison
+			const relevantDateA = this.getRelevantDate(a);
+			const relevantDateB = this.getRelevantDate(b);
 
-				return relevantDateA - relevantDateB;
-			});
-		};
+			if (relevantDateA === undefined && relevantDateB === undefined)
+				return 0;
+			if (relevantDateA === undefined) return 1; // Place tasks without dates later
+			if (relevantDateB === undefined) return -1; // Place tasks without dates later
 
-		this.pastTasks = sortTasksByPriorityAndRelevantDate(this.pastTasks);
-		this.todayTasks = sortTasksByPriorityAndRelevantDate(this.todayTasks);
-		this.futureTasks = sortTasksByPriorityAndRelevantDate(this.futureTasks);
+			return relevantDateA - relevantDateB;
+		});
 	}
 
 	private updateTaskStats() {
@@ -659,6 +692,26 @@ export class ForecastComponent extends Component {
 				tasks: this.pastTasks, // Use pastTasks
 				isExpanded: true,
 			});
+		}
+
+		const viewConfig = this.plugin.settings.viewConfiguration.find(
+			(view) => view.id === "forecast"
+		);
+		if (viewConfig?.sortCriteria && viewConfig.sortCriteria.length > 0) {
+			const dueDateSortCriterion = viewConfig.sortCriteria.find(
+				(t) => t.field === "dueDate"
+			);
+			const scheduledDateSortCriterion = viewConfig.sortCriteria.find(
+				(t) => t.field === "scheduledDate"
+			);
+			if (dueDateSortCriterion && dueDateSortCriterion.order === "desc") {
+				this.dateSections.reverse();
+			} else if (
+				scheduledDateSortCriterion &&
+				scheduledDateSortCriterion.order === "desc"
+			) {
+				this.dateSections.reverse();
+			}
 		}
 	}
 

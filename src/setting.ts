@@ -3236,6 +3236,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			});
 	}
 
+
 	// START: New Reward Settings Section
 	private displayRewardSettings(containerEl: HTMLElement): void {
 		new Setting(containerEl)

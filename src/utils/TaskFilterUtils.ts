@@ -5,6 +5,7 @@ import {
 	getViewSettingOrDefault,
 } from "../common/setting-definition";
 import TaskProgressBarPlugin from "../index";
+import { sortTasks } from "../commands/sortTaskCommands";
 
 interface FilterOptions {
 	textQuery?: string;
@@ -330,9 +331,6 @@ export function filterTasks(
 			filtered = filtered.filter((task) => !task.createdDate);
 		}
 	}
-
-	// Note: Sorting is NOT done here. It should be handled by the component
-	// after receiving the filtered list, as sorting might be view-specific.
 
 	return filtered;
 }
