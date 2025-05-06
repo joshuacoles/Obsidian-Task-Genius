@@ -27,6 +27,9 @@ export type ViewMode =
 	| "flagged" // Added flagged as it was in the default config attempt
 	| string; // Allow custom view IDs
 
+export type DateExistType = "hasDate" | "noDate" | "any";
+export type PropertyExistType = "hasProperty" | "noProperty" | "any";
+
 // Define and export ViewFilterRule interface
 export interface ViewFilterRule {
 	// Simple example, expand as needed
@@ -36,17 +39,17 @@ export interface ViewFilterRule {
 	statusExclude?: string[];
 	project?: string;
 	priority?: number;
-	hasDueDate?: boolean;
+	hasDueDate?: DateExistType;
 	dueDate?: string; // e.g., 'today', 'next-week', 'yyyy-mm-dd'
-	hasStartDate?: boolean;
+	hasStartDate?: DateExistType;
 	startDate?: string;
-	hasScheduledDate?: boolean;
+	hasScheduledDate?: DateExistType;
 	scheduledDate?: string;
-	hasCreatedDate?: boolean;
+	hasCreatedDate?: DateExistType;
 	createdDate?: string;
-	hasCompletedDate?: boolean;
+	hasCompletedDate?: DateExistType;
 	completedDate?: string;
-	hasRecurrence?: boolean;
+	hasRecurrence?: PropertyExistType;
 	recurrence?: string;
 	textContains?: string;
 	pathIncludes?: string;

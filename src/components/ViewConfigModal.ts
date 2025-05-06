@@ -19,6 +19,7 @@ import {
 	ViewFilterRule,
 	ViewMode,
 	ForecastSpecificConfig,
+	DateExistType,
 } from "../common/setting-definition";
 import TaskProgressBarPlugin from "../index";
 import { FolderSuggest } from "./AutoComplete";
@@ -725,68 +726,87 @@ export class ViewConfigModal extends Modal {
 
 		new Setting(contentEl)
 			.setName(t("Has due date"))
-			.setDesc(t("Only show tasks that have a due date."))
-			.addToggle((toggle) => {
-				toggle.setValue(this.viewFilterRule.hasDueDate || false);
-				toggle.onChange((value) => {
-					this.viewFilterRule.hasDueDate = value;
-					this.checkForChanges();
-				});
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("hasDate", t("Has date"))
+					.addOption("noDate", t("No date"))
+					.addOption("any", t("Any"))
+					.setValue(this.viewFilterRule.hasDueDate || "any")
+					.onChange((value) => {
+						this.viewFilterRule.hasDueDate = value as DateExistType;
+						this.checkForChanges();
+					});
 			});
 
 		new Setting(contentEl)
 			.setName(t("Has start date"))
-			.setDesc(t("Only show tasks that have a start date."))
-			.addToggle((toggle) => {
-				toggle.setValue(this.viewFilterRule.hasStartDate || false);
-				toggle.onChange((value) => {
-					this.viewFilterRule.hasStartDate = value;
-					this.checkForChanges();
-				});
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("hasDate", t("Has date"))
+					.addOption("noDate", t("No date"))
+					.addOption("any", t("Any"))
+					.setValue(this.viewFilterRule.hasStartDate || "any")
+					.onChange((value) => {
+						this.viewFilterRule.hasStartDate =
+							value as DateExistType;
+						this.checkForChanges();
+					});
 			});
 
 		new Setting(contentEl)
 			.setName(t("Has scheduled date"))
-			.setDesc(t("Only show tasks that have a scheduled date."))
-			.addToggle((toggle) => {
-				toggle.setValue(this.viewFilterRule.hasScheduledDate || false);
-				toggle.onChange((value) => {
-					this.viewFilterRule.hasScheduledDate = value;
-					this.checkForChanges();
-				});
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("hasDate", t("Has date"))
+					.addOption("noDate", t("No date"))
+					.addOption("any", t("Any"))
+					.setValue(this.viewFilterRule.hasScheduledDate || "any")
+					.onChange((value) => {
+						this.viewFilterRule.hasScheduledDate =
+							value as DateExistType;
+						this.checkForChanges();
+					});
 			});
 
 		new Setting(contentEl)
 			.setName(t("Has created date"))
-			.setDesc(t("Only show tasks that have a created date."))
-			.addToggle((toggle) => {
-				toggle.setValue(this.viewFilterRule.hasCreatedDate || false);
-				toggle.onChange((value) => {
-					this.viewFilterRule.hasCreatedDate = value;
-					this.checkForChanges();
-				});
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("hasDate", t("Has date"))
+					.addOption("noDate", t("No date"))
+					.addOption("any", t("Any"))
+					.setValue(this.viewFilterRule.hasCreatedDate || "any")
+					.onChange((value) => {
+						this.viewFilterRule.hasCreatedDate =
+							value as DateExistType;
+						this.checkForChanges();
+					});
 			});
 
 		new Setting(contentEl)
 			.setName(t("Has completed date"))
-			.setDesc(t("Only show tasks that have a completed date."))
-			.addToggle((toggle) => {
-				toggle.setValue(this.viewFilterRule.hasCompletedDate || false);
-				toggle.onChange((value) => {
-					this.viewFilterRule.hasCompletedDate = value;
-					this.checkForChanges();
-				});
+			.setDesc(t("Only show tasks that match the completed date."))
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("hasDate", t("Has date"))
+					.addOption("noDate", t("No date"))
+					.addOption("any", t("Any"))
+					.setValue(this.viewFilterRule.hasCompletedDate || "any")
+					.onChange((value) => {
+						this.viewFilterRule.hasCompletedDate =
+							value as DateExistType;
+						this.checkForChanges();
+					});
 			});
 
 		new Setting(contentEl)
 			.setName(t("Has recurrence"))
-			.setDesc(t("Only show tasks that have a recurrence pattern."))
-			.addToggle((toggle) => {
-				toggle.setValue(this.viewFilterRule.hasRecurrence || false);
-				toggle.onChange((value) => {
-					this.viewFilterRule.hasRecurrence = value;
-					this.checkForChanges();
-				});
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("hasProperty", t("Has property"))
+					.addOption("noProperty", t("No property"))
+					.addOption("any", t("Any"))
+					.setValue(this.viewFilterRule.hasRecurrence || "any");
 			});
 
 		// --- First Day of Week ---
@@ -870,12 +890,18 @@ export class ViewConfigModal extends Modal {
 		if (scheduledDate) rules.scheduledDate = scheduledDate;
 
 		// 保留日期存在性筛选设置
-		if (this.viewFilterRule.hasDueDate) rules.hasDueDate = true;
-		if (this.viewFilterRule.hasStartDate) rules.hasStartDate = true;
-		if (this.viewFilterRule.hasScheduledDate) rules.hasScheduledDate = true;
-		if (this.viewFilterRule.hasCreatedDate) rules.hasCreatedDate = true;
-		if (this.viewFilterRule.hasCompletedDate) rules.hasCompletedDate = true;
-		if (this.viewFilterRule.hasRecurrence) rules.hasRecurrence = true;
+		if (this.viewFilterRule.hasDueDate)
+			rules.hasDueDate = this.viewFilterRule.hasDueDate;
+		if (this.viewFilterRule.hasStartDate)
+			rules.hasStartDate = this.viewFilterRule.hasStartDate;
+		if (this.viewFilterRule.hasScheduledDate)
+			rules.hasScheduledDate = this.viewFilterRule.hasScheduledDate;
+		if (this.viewFilterRule.hasCreatedDate)
+			rules.hasCreatedDate = this.viewFilterRule.hasCreatedDate;
+		if (this.viewFilterRule.hasCompletedDate)
+			rules.hasCompletedDate = this.viewFilterRule.hasCompletedDate;
+		if (this.viewFilterRule.hasRecurrence)
+			rules.hasRecurrence = this.viewFilterRule.hasRecurrence;
 
 		const pathIncludes = this.pathIncludesInput?.getValue()?.trim();
 		if (pathIncludes) rules.pathIncludes = pathIncludes;

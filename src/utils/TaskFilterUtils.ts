@@ -267,62 +267,68 @@ export function filterTasks(
 
 	// --- Apply `hasDueDate` Filter ---
 	if (filterRules.hasDueDate) {
-		filtered = filtered.filter((task) => task.dueDate);
-	} else if (
-		typeof filterRules.hasDueDate === "boolean" &&
-		filterRules.hasDueDate === false
-	) {
-		filtered = filtered.filter((task) => !task.dueDate);
+		if (filterRules.hasDueDate === "any") {
+			// Do nothing
+		} else if (filterRules.hasDueDate === "hasDate") {
+			filtered = filtered.filter((task) => task.dueDate);
+		} else if (filterRules.hasDueDate === "noDate") {
+			filtered = filtered.filter((task) => !task.dueDate);
+		}
 	}
 
 	// --- Apply `hasStartDate` Filter ---
 	if (filterRules.hasStartDate) {
-		filtered = filtered.filter((task) => task.startDate);
-	} else if (
-		typeof filterRules.hasStartDate === "boolean" &&
-		filterRules.hasStartDate === false
-	) {
-		filtered = filtered.filter((task) => !task.startDate);
+		if (filterRules.hasStartDate === "any") {
+			// Do nothing
+		} else if (filterRules.hasStartDate === "hasDate") {
+			filtered = filtered.filter((task) => task.startDate);
+		} else if (filterRules.hasStartDate === "noDate") {
+			filtered = filtered.filter((task) => !task.startDate);
+		}
 	}
 
 	// --- Apply `hasScheduledDate` Filter ---
 	if (filterRules.hasScheduledDate) {
-		filtered = filtered.filter((task) => task.scheduledDate);
-	} else if (
-		typeof filterRules.hasScheduledDate === "boolean" &&
-		filterRules.hasDueDate === false
-	) {
-		filtered = filtered.filter((task) => !task.scheduledDate);
+		if (filterRules.hasScheduledDate === "any") {
+			// Do nothing
+		} else if (filterRules.hasScheduledDate === "hasDate") {
+			filtered = filtered.filter((task) => task.scheduledDate);
+		} else if (filterRules.hasScheduledDate === "noDate") {
+			filtered = filtered.filter((task) => !task.scheduledDate);
+		}
 	}
 
 	// --- Apply `hasCompletedDate` Filter ---
 	if (filterRules.hasCompletedDate) {
-		filtered = filtered.filter((task) => task.completedDate);
-	} else if (
-		typeof filterRules.hasCompletedDate === "boolean" &&
-		filterRules.hasCompletedDate === false
-	) {
-		filtered = filtered.filter((task) => !task.completedDate);
+		if (filterRules.hasCompletedDate === "any") {
+			// Do nothing
+		} else if (filterRules.hasCompletedDate === "hasDate") {
+			filtered = filtered.filter((task) => task.completedDate);
+		} else if (filterRules.hasCompletedDate === "noDate") {
+			filtered = filtered.filter((task) => !task.completedDate);
+		}
 	}
 
 	// --- Apply `hasRecurrence` Filter ---
 	if (filterRules.hasRecurrence) {
-		filtered = filtered.filter((task) => task.recurrence);
-	} else if (
-		typeof filterRules.hasRecurrence === "boolean" &&
-		filterRules.hasRecurrence === false
-	) {
-		filtered = filtered.filter((task) => !task.recurrence);
+		if (filterRules.hasRecurrence === "any") {
+			// Do nothing
+		} else if (filterRules.hasRecurrence === "hasProperty") {
+			filtered = filtered.filter((task) => task.recurrence);
+		} else if (filterRules.hasRecurrence === "noProperty") {
+			filtered = filtered.filter((task) => !task.recurrence);
+		}
 	}
 
 	// --- Apply `hasCreatedDate` Filter ---
 	if (filterRules.hasCreatedDate) {
-		filtered = filtered.filter((task) => task.createdDate);
-	} else if (
-		typeof filterRules.hasCreatedDate === "boolean" &&
-		filterRules.hasCreatedDate === false
-	) {
-		filtered = filtered.filter((task) => !task.createdDate);
+		if (filterRules.hasCreatedDate === "any") {
+			// Do nothing
+		} else if (filterRules.hasCreatedDate === "hasDate") {
+			filtered = filtered.filter((task) => task.createdDate);
+		} else if (filterRules.hasCreatedDate === "noDate") {
+			filtered = filtered.filter((task) => !task.createdDate);
+		}
 	}
 
 	// Note: Sorting is NOT done here. It should be handled by the component
