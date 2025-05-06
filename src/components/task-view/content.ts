@@ -233,7 +233,8 @@ export class ContentComponent extends Component {
 		// Render based on view mode
 		if (this.isTreeView) {
 			const taskMap = new Map<string, Task>();
-			this.filteredTasks.forEach((task) => taskMap.set(task.id, task));
+			// 将所有非过滤任务添加到 taskMap 中，确保支持多层级任务结构
+			this.notFilteredTasks.forEach((task) => taskMap.set(task.id, task));
 			this.rootTasks = tasksToTree(this.filteredTasks); // Calculate root tasks
 			this.loadRootTaskBatch(taskMap); // Load the first batch
 		} else {
@@ -288,11 +289,16 @@ export class ContentComponent extends Component {
 		const start = this.nextRootTaskIndex;
 		const end = Math.min(start + countToLoad, this.rootTasks.length);
 
-		// console.log(`Loading tree tasks from ${start} to ${end}`);
+		// Make sure all non-filtered tasks are in the taskMap
+		this.notFilteredTasks.forEach((task) => {
+			if (!taskMap.has(task.id)) {
+				taskMap.set(task.id, task);
+			}
+		});
 
 		for (let i = start; i < end; i++) {
 			const rootTask = this.rootTasks[i];
-			const childTasks = this.filteredTasks.filter(
+			const childTasks = this.notFilteredTasks.filter(
 				(task) => task.parent === rootTask.id
 			);
 
@@ -438,12 +444,14 @@ export class ContentComponent extends Component {
 		);
 		if (taskIndexAll !== -1) {
 			this.allTasks[taskIndexAll] = { ...updatedTask };
-		} else {
-			// If task doesn't exist in allTasks, it might be a new task
-			// We might need a mechanism to add it, or rely on a full refresh
-			// For now, let's just check if it should be added based on current filters
-			// This is complex, a full refresh via applyFilters might be safer
-			// this.allTasks.push(updatedTask);
+		}
+
+		// 同时更新 notFilteredTasks 中的任务
+		const taskIndexNotFiltered = this.notFilteredTasks.findIndex(
+			(t) => t.id === updatedTask.id
+		);
+		if (taskIndexNotFiltered !== -1) {
+			this.notFilteredTasks[taskIndexNotFiltered] = { ...updatedTask };
 		}
 
 		// Update selected task state if it was the one updated
