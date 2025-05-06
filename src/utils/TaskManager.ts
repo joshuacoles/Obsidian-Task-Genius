@@ -1560,11 +1560,15 @@ export class TaskManager extends Component {
 		console.log(task);
 
 		// Start with due date if available, then scheduled date, then today
-		const baseDate = task.dueDate
-			? new Date(task.dueDate)
-			: task.scheduledDate
-			? new Date(task.scheduledDate)
-			: new Date();
+		// But I think it's better to use the current date as the base date
+		// because the due date and scheduled date are not always available
+		// And next recurrence date that is calculated will be the next occurrence of the task
+		// const baseDate = task.dueDate
+		// 	? new Date(task.dueDate)
+		// 	: task.scheduledDate
+		// 	? new Date(task.scheduledDate)
+		// 	: new Date();
+		const baseDate = new Date();
 		// Ensure baseDate is at the beginning of the day for date-based recurrence
 		baseDate.setHours(0, 0, 0, 0);
 
@@ -1616,8 +1620,47 @@ export class TaskManager extends Component {
 			const recurrence = task.recurrence.trim().toLowerCase();
 			let nextDate = new Date(baseDate); // Start calculation from the base date
 
+			// Calculate the next date based on the recurrence pattern
+			const monthOnDayRegex =
+				/every\s+month\s+on\s+the\s+(\d+)(st|nd|rd|th)/i;
+			const monthOnDayMatch = recurrence.match(monthOnDayRegex);
+
+			if (monthOnDayMatch) {
+				const dayOfMonth = parseInt(monthOnDayMatch[1]);
+				if (!isNaN(dayOfMonth) && dayOfMonth >= 1 && dayOfMonth <= 31) {
+					// Clone the base date for calculation
+					const nextMonthDate = new Date(baseDate.getTime());
+
+					// Move to the next month
+					nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+					// Set to the specified date
+					nextMonthDate.setDate(dayOfMonth);
+
+					// Check if we need to move to the next month
+					// If the base date's date has already passed the specified date and it's the same month, use the next month's corresponding date
+					// If the base date's date hasn't passed the specified date and it's the same month, use the current month's corresponding date
+					if (baseDate.getDate() < dayOfMonth) {
+						// The base date hasn't passed the specified date, use the current month's date
+						nextMonthDate.setMonth(baseDate.getMonth());
+					}
+
+					// Validate the date (handle 2/30, etc.)
+					if (nextMonthDate.getDate() !== dayOfMonth) {
+						// Invalid date, use the last day of the month
+						nextMonthDate.setDate(0);
+					}
+
+					nextDate = nextMonthDate;
+				} else {
+					this.log(
+						`[TaskManager] Invalid day of month: ${dayOfMonth}`
+					);
+					// Fall back to +1 day
+					nextDate.setDate(baseDate.getDate() + 1);
+				}
+			}
 			// Parse "every X days/weeks/months/years" format
-			if (recurrence.startsWith("every")) {
+			else if (recurrence.startsWith("every")) {
 				const parts = recurrence.split(" ");
 				if (parts.length >= 2) {
 					let interval = 1;

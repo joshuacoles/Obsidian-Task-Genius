@@ -730,190 +730,205 @@ export class ViewConfigModal extends Modal {
 				text.onChange(() => this.checkForChanges());
 			});
 
-		new Setting(contentEl)
-			.setName(t("Sort Criteria"))
-			.setDesc(
-				t(
-					"Define the order in which tasks should be sorted. Criteria are applied sequentially."
-				)
+		if (
+			!["kanban", "gantt", "calendar"].includes(
+				this.viewConfig.specificConfig?.viewType || ""
 			)
-			.setHeading();
+		) {
+			new Setting(contentEl)
+				.setName(t("Sort Criteria"))
+				.setDesc(
+					t(
+						"Define the order in which tasks should be sorted. Criteria are applied sequentially."
+					)
+				)
+				.setHeading();
 
-		const criteriaContainer = contentEl.createDiv({
-			cls: "sort-criteria-container",
-		});
-
-		const refreshCriteriaList = () => {
-			criteriaContainer.empty();
-
-			// Ensure viewConfig.sortCriteria exists
-			if (!this.viewConfig.sortCriteria) {
-				this.viewConfig.sortCriteria = [];
-			}
-
-			const criteria = this.viewConfig.sortCriteria;
-
-			if (criteria.length === 0) {
-				criteriaContainer.createEl("p", {
-					text: t("No sort criteria defined. Add criteria below."),
-					cls: "setting-item-description",
-				});
-			}
-
-			criteria.forEach((criterion: SortCriterion, index: number) => {
-				const criterionSetting = new Setting(criteriaContainer)
-					.setClass("sort-criterion-row")
-					.addDropdown((dropdown) => {
-						dropdown
-							.addOption("status", t("Status"))
-							.addOption("priority", t("Priority"))
-							.addOption("dueDate", t("Due Date"))
-							.addOption("startDate", t("Start Date"))
-							.addOption("scheduledDate", t("Scheduled Date"))
-							.addOption("content", t("Content"))
-							.setValue(criterion.field)
-							.onChange((value: SortCriterion["field"]) => {
-								if (this.viewConfig.sortCriteria) {
-									this.viewConfig.sortCriteria[index].field =
-										value;
-									this.checkForChanges();
-									this.checkForChanges();
-								}
-							});
-					})
-					.addDropdown((dropdown) => {
-						dropdown
-							.addOption("asc", t("Ascending"))
-							.addOption("desc", t("Descending"))
-							.setValue(criterion.order)
-							.onChange((value: SortCriterion["order"]) => {
-								if (this.viewConfig.sortCriteria) {
-									this.viewConfig.sortCriteria[index].order =
-										value;
-									this.checkForChanges();
-								}
-							});
-						// Add tooltips explaining what asc/desc means for each field type if possible
-						if (criterion.field === "priority") {
-							dropdown.selectEl.title = t(
-								"Ascending: High -> Low -> None. Descending: None -> Low -> High"
-							);
-						} else if (
-							["dueDate", "startDate", "scheduledDate"].includes(
-								criterion.field
-							)
-						) {
-							dropdown.selectEl.title = t(
-								"Ascending: Earlier -> Later -> None. Descending: None -> Later -> Earlier"
-							);
-						} else if (criterion.field === "status") {
-							dropdown.selectEl.title = t(
-								"Ascending respects status order (Overdue first). Descending reverses it."
-							);
-						} else {
-							dropdown.selectEl.title = t(
-								"Ascending: A-Z. Descending: Z-A"
-							);
-						}
-					});
-
-				// Controls for reordering and deleting
-				criterionSetting.addExtraButton((button) => {
-					button
-						.setIcon("arrow-up")
-						.setTooltip(t("Move Up"))
-						.setDisabled(index === 0)
-						.onClick(() => {
-							if (index > 0 && this.viewConfig.sortCriteria) {
-								const item =
-									this.viewConfig.sortCriteria.splice(
-										index,
-										1
-									)[0];
-								this.viewConfig.sortCriteria.splice(
-									index - 1,
-									0,
-									item
-								);
-								this.checkForChanges();
-								refreshCriteriaList();
-							}
-						});
-				});
-				criterionSetting.addExtraButton((button) => {
-					button
-						.setIcon("arrow-down")
-						.setTooltip(t("Move Down"))
-						.setDisabled(index === criteria.length - 1)
-						.onClick(() => {
-							if (
-								index < criteria.length - 1 &&
-								this.viewConfig.sortCriteria
-							) {
-								const item =
-									this.viewConfig.sortCriteria.splice(
-										index,
-										1
-									)[0];
-								this.viewConfig.sortCriteria.splice(
-									index + 1,
-									0,
-									item
-								);
-								this.checkForChanges();
-								refreshCriteriaList();
-							}
-						});
-				});
-				criterionSetting.addExtraButton((button) => {
-					button
-						.setIcon("trash")
-						.setTooltip(t("Remove Criterion"))
-						.onClick(() => {
-							if (this.viewConfig.sortCriteria) {
-								this.viewConfig.sortCriteria.splice(index, 1);
-								this.checkForChanges();
-								refreshCriteriaList();
-							}
-						});
-					// Add class to the container element of the extra button
-					button.extraSettingsEl.addClass("mod-warning");
-				});
+			const criteriaContainer = contentEl.createDiv({
+				cls: "sort-criteria-container",
 			});
 
-			// Button to add a new criterion
-			new Setting(criteriaContainer)
-				.addButton((button) => {
-					button
-						.setButtonText(t("Add Sort Criterion"))
-						.setCta()
-						.onClick(() => {
-							const newCriterion: SortCriterion = {
-								field: "status",
-								order: "asc",
-							};
-							if (!this.viewConfig.sortCriteria) {
-								this.viewConfig.sortCriteria = [];
+			const refreshCriteriaList = () => {
+				criteriaContainer.empty();
+
+				// Ensure viewConfig.sortCriteria exists
+				if (!this.viewConfig.sortCriteria) {
+					this.viewConfig.sortCriteria = [];
+				}
+
+				const criteria = this.viewConfig.sortCriteria;
+
+				if (criteria.length === 0) {
+					criteriaContainer.createEl("p", {
+						text: t(
+							"No sort criteria defined. Add criteria below."
+						),
+						cls: "setting-item-description",
+					});
+				}
+
+				criteria.forEach((criterion: SortCriterion, index: number) => {
+					const criterionSetting = new Setting(criteriaContainer)
+						.setClass("sort-criterion-row")
+						.addDropdown((dropdown) => {
+							dropdown
+								.addOption("status", t("Status"))
+								.addOption("priority", t("Priority"))
+								.addOption("dueDate", t("Due Date"))
+								.addOption("startDate", t("Start Date"))
+								.addOption("scheduledDate", t("Scheduled Date"))
+								.addOption("content", t("Content"))
+								.setValue(criterion.field)
+								.onChange((value: SortCriterion["field"]) => {
+									if (this.viewConfig.sortCriteria) {
+										this.viewConfig.sortCriteria[
+											index
+										].field = value;
+										this.checkForChanges();
+										this.checkForChanges();
+									}
+								});
+						})
+						.addDropdown((dropdown) => {
+							dropdown
+								.addOption("asc", t("Ascending"))
+								.addOption("desc", t("Descending"))
+								.setValue(criterion.order)
+								.onChange((value: SortCriterion["order"]) => {
+									if (this.viewConfig.sortCriteria) {
+										this.viewConfig.sortCriteria[
+											index
+										].order = value;
+										this.checkForChanges();
+									}
+								});
+							// Add tooltips explaining what asc/desc means for each field type if possible
+							if (criterion.field === "priority") {
+								dropdown.selectEl.title = t(
+									"Ascending: High -> Low -> None. Descending: None -> Low -> High"
+								);
+							} else if (
+								[
+									"dueDate",
+									"startDate",
+									"scheduledDate",
+								].includes(criterion.field)
+							) {
+								dropdown.selectEl.title = t(
+									"Ascending: Earlier -> Later -> None. Descending: None -> Later -> Earlier"
+								);
+							} else if (criterion.field === "status") {
+								dropdown.selectEl.title = t(
+									"Ascending respects status order (Overdue first). Descending reverses it."
+								);
+							} else {
+								dropdown.selectEl.title = t(
+									"Ascending: A-Z. Descending: Z-A"
+								);
 							}
-							this.viewConfig.sortCriteria.push(newCriterion);
-							this.checkForChanges();
-							refreshCriteriaList();
 						});
-				})
-				.addButton((button) => {
-					// Button to reset to defaults
-					button.setButtonText(t("Reset to Defaults")).onClick(() => {
-						// Optional: Add confirmation dialog here
-						this.viewConfig.sortCriteria = []; // Use spread to copy
-						this.checkForChanges();
-						refreshCriteriaList();
+
+					// Controls for reordering and deleting
+					criterionSetting.addExtraButton((button) => {
+						button
+							.setIcon("arrow-up")
+							.setTooltip(t("Move Up"))
+							.setDisabled(index === 0)
+							.onClick(() => {
+								if (index > 0 && this.viewConfig.sortCriteria) {
+									const item =
+										this.viewConfig.sortCriteria.splice(
+											index,
+											1
+										)[0];
+									this.viewConfig.sortCriteria.splice(
+										index - 1,
+										0,
+										item
+									);
+									this.checkForChanges();
+									refreshCriteriaList();
+								}
+							});
+					});
+					criterionSetting.addExtraButton((button) => {
+						button
+							.setIcon("arrow-down")
+							.setTooltip(t("Move Down"))
+							.setDisabled(index === criteria.length - 1)
+							.onClick(() => {
+								if (
+									index < criteria.length - 1 &&
+									this.viewConfig.sortCriteria
+								) {
+									const item =
+										this.viewConfig.sortCriteria.splice(
+											index,
+											1
+										)[0];
+									this.viewConfig.sortCriteria.splice(
+										index + 1,
+										0,
+										item
+									);
+									this.checkForChanges();
+									refreshCriteriaList();
+								}
+							});
+					});
+					criterionSetting.addExtraButton((button) => {
+						button
+							.setIcon("trash")
+							.setTooltip(t("Remove Criterion"))
+							.onClick(() => {
+								if (this.viewConfig.sortCriteria) {
+									this.viewConfig.sortCriteria.splice(
+										index,
+										1
+									);
+									this.checkForChanges();
+									refreshCriteriaList();
+								}
+							});
+						// Add class to the container element of the extra button
+						button.extraSettingsEl.addClass("mod-warning");
 					});
 				});
-		};
 
-		refreshCriteriaList(); // Initial render
+				// Button to add a new criterion
+				new Setting(criteriaContainer)
+					.addButton((button) => {
+						button
+							.setButtonText(t("Add Sort Criterion"))
+							.setCta()
+							.onClick(() => {
+								const newCriterion: SortCriterion = {
+									field: "status",
+									order: "asc",
+								};
+								if (!this.viewConfig.sortCriteria) {
+									this.viewConfig.sortCriteria = [];
+								}
+								this.viewConfig.sortCriteria.push(newCriterion);
+								this.checkForChanges();
+								refreshCriteriaList();
+							});
+					})
+					.addButton((button) => {
+						// Button to reset to defaults
+						button
+							.setButtonText(t("Reset to Defaults"))
+							.onClick(() => {
+								// Optional: Add confirmation dialog here
+								this.viewConfig.sortCriteria = []; // Use spread to copy
+								this.checkForChanges();
+								refreshCriteriaList();
+							});
+					});
+			};
 
-		new Setting(contentEl).setName(t("Special date filters")).setHeading();
+			refreshCriteriaList();
+		}
 
 		new Setting(contentEl)
 			.setName(t("Has due date"))

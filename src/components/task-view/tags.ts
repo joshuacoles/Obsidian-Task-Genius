@@ -12,6 +12,8 @@ import "../../styles/tag-view.css";
 import { TaskTreeItemComponent } from "./treeItem";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
+import { sortTasks } from "../../commands/sortTaskCommands";
+
 interface SelectedTags {
 	tags: string[];
 	tasks: Task[];
@@ -486,25 +488,37 @@ export class TagsComponent extends Component {
 				resultTaskIds.has(task.id)
 			);
 
-			// Sort tasks by priority and due date
-			this.filteredTasks.sort((a, b) => {
-				// First by completion status
-				if (a.completed !== b.completed) {
-					return a.completed ? 1 : -1;
-				}
+			const viewConfig = this.plugin.settings.viewConfiguration.find(
+				(view) => view.id === "tags"
+			);
+			if (
+				viewConfig?.sortCriteria &&
+				viewConfig.sortCriteria.length > 0
+			) {
+				this.filteredTasks = sortTasks(
+					this.filteredTasks,
+					viewConfig.sortCriteria,
+					this.plugin.settings
+				);
+			} else {
+				this.filteredTasks.sort((a, b) => {
+					if (a.completed !== b.completed) {
+						return a.completed ? 1 : -1;
+					}
 
-				// Then by priority (high to low)
-				const priorityA = a.priority || 0;
-				const priorityB = b.priority || 0;
-				if (priorityA !== priorityB) {
-					return priorityB - priorityA;
-				}
+					// Then by priority (high to low)
+					const priorityA = a.priority || 0;
+					const priorityB = b.priority || 0;
+					if (priorityA !== priorityB) {
+						return priorityB - priorityA;
+					}
 
-				// Then by due date (early to late)
-				const dueDateA = a.dueDate || Number.MAX_SAFE_INTEGER;
-				const dueDateB = b.dueDate || Number.MAX_SAFE_INTEGER;
-				return dueDateA - dueDateB;
-			});
+					// Then by due date (early to late)
+					const dueDateA = a.dueDate || Number.MAX_SAFE_INTEGER;
+					const dueDateB = b.dueDate || Number.MAX_SAFE_INTEGER;
+					return dueDateA - dueDateB;
+				});
+			}
 		}
 
 		// Decide whether to create sections or render flat/tree
